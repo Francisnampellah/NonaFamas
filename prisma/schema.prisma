@@ -1,0 +1,109 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User roles in the system
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  users User[]
+}
+
+// Users in the system
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  roleId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  role      Role        @relation(fields: [roleId], references: [id])
+  Sale      Sale[]
+  Inventory Inventory[]
+  AuditLog  AuditLog[]
+}
+
+// Medicines in the pharmacy
+model Medicine {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  price       Float
+  quantity    Int      @default(0) // Current stock
+  supplierId  Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  supplier  Supplier?   @relation(fields: [supplierId], references: [id])
+  sales     Sale[]
+  Inventory Inventory[]
+}
+
+// Sales transactions
+model Sale {
+  id         Int      @id @default(autoincrement())
+  medicineId Int
+  quantity   Int
+  totalPrice Float
+  userId     Int?
+  createdAt  DateTime @default(now())
+
+  medicine    Medicine      @relation(fields: [medicineId], references: [id])
+  user        User?         @relation(fields: [userId], references: [id])
+  Transaction Transaction[]
+}
+
+// Inventory logs (e.g., restocking, adjustments)
+model Inventory {
+  id         Int      @id @default(autoincrement())
+  medicineId Int
+  quantity   Int // Positive for restock, negative for adjustment
+  action     String // e.g., "restock", "adjustment"
+  userId     Int
+  createdAt  DateTime @default(now())
+
+  medicine Medicine @relation(fields: [medicineId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+}
+
+// Suppliers for medicines
+model Supplier {
+  id          Int        @id @default(autoincrement())
+  name        String
+  contactInfo String?
+  medicines   Medicine[]
+  address     String
+}
+
+// Payment and transaction records
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  saleId      Int
+  paymentType String // e.g., "cash", "card"
+  amountPaid  Float
+  createdAt   DateTime @default(now())
+  sale Sale @relation(fields: [saleId], references: [id])
+}
+
+// Audit log for tracking user activities
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  action    String // e.g., "created medicine", "updated stock"
+  details   String?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id])
+}
