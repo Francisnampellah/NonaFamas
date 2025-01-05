@@ -18,6 +18,7 @@ model User {
   email     String      @unique
   name      String
   password  String
+  role      Role        @default(USER)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   sales     Sale[]
@@ -25,6 +26,12 @@ model User {
   auditLogs AuditLog[]
 
   @@index([email])
+}
+
+enum Role {
+  USER
+  ADMIN
+  PHARMACIST
 }
 
 model Medicine {

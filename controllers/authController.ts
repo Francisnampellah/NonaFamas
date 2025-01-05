@@ -2,14 +2,14 @@ import express from 'express';
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { PrismaClient, User } from '@prisma/client';
+import { PrismaClient, User, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 class AuthController {
   async register(req: Request, res: Response) {
     try {
-      const { email, password, name } = req.body;
+      const { email, password, name, role = 'USER' } = req.body;
 
       const existingUser = await prisma.user.findUnique({
         where: { email }
@@ -27,17 +27,19 @@ class AuthController {
           email,
           password: hashedPassword,
           name,
+          role: role as Prisma.UserCreateInput['role'],
         },
         select: {
           id: true,
           email: true,
           name: true,
+          role: true,
           createdAt: true
         }
       });
 
       const token = jwt.sign(
-        { userId: user.id },
+        { userId: user.id, role: user.role },
         process.env.JWT_SECRET || 'your-secret-key',
         { expiresIn: '24h' }
       );
@@ -58,7 +60,8 @@ class AuthController {
           id: true,
           email: true,
           name: true,
-          password: true
+          password: true,
+          role: true
         }
       });
 
@@ -72,7 +75,7 @@ class AuthController {
       }
 
       const token = jwt.sign(
-        { userId: user.id },
+        { userId: user.id, role: user.role },
         process.env.JWT_SECRET || 'your-secret-key',
         { expiresIn: '24h' }
       );
