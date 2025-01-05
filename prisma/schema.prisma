@@ -13,97 +13,102 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User roles in the system
-model Role {
-  id    Int    @id @default(autoincrement())
-  name  String @unique
-  users User[]
-}
-
-// Users in the system
 model User {
-  id        Int      @id @default(autoincrement())
+  id        Int         @id @default(autoincrement())
+  email     String      @unique
   name      String
-  email     String   @unique
   password  String
-  roleId    Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  sales     Sale[]
+  inventory Inventory[]
+  auditLogs AuditLog[]
 
-  role      Role        @relation(fields: [roleId], references: [id])
-  Sale      Sale[]
-  Inventory Inventory[]
-  AuditLog  AuditLog[]
+  @@index([email])
 }
 
-// Medicines in the pharmacy
 model Medicine {
-  id          Int      @id @default(autoincrement())
+  id          Int         @id @default(autoincrement())
   name        String
   description String?
-  price       Float
-  quantity    Int      @default(0) // Current stock
+  packageType String      // Renamed from package for clarity
+  unitPrice   Float       // Renamed from price for clarity
+  stockCount  Int         @default(0) // Renamed from quantity
+  elementId   Int?        // Renamed from element
   supplierId  Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  supplier    Supplier?   @relation(fields: [supplierId], references: [id])
+  sales       Sale[]
+  inventory   Inventory[]
 
-  supplier  Supplier?   @relation(fields: [supplierId], references: [id])
-  sales     Sale[]
-  Inventory Inventory[]
+  @@index([name])
+  @@index([supplierId])
 }
 
-// Sales transactions
 model Sale {
-  id         Int      @id @default(autoincrement())
+  id         Int           @id @default(autoincrement())
   medicineId Int
   quantity   Int
   totalPrice Float
   userId     Int?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime      @default(now())
+  
+  medicine     Medicine      @relation(fields: [medicineId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
+  transactions Transaction[]
 
-  medicine    Medicine      @relation(fields: [medicineId], references: [id])
-  user        User?         @relation(fields: [userId], references: [id])
-  Transaction Transaction[]
+  @@index([medicineId])
+  @@index([userId])
 }
 
-// Inventory logs (e.g., restocking, adjustments)
 model Inventory {
   id         Int      @id @default(autoincrement())
   medicineId Int
-  quantity   Int // Positive for restock, negative for adjustment
-  action     String // e.g., "restock", "adjustment"
+  quantity   Int
+  actionType String   // Renamed from action for clarity
   userId     Int
   createdAt  DateTime @default(now())
 
   medicine Medicine @relation(fields: [medicineId], references: [id])
   user     User     @relation(fields: [userId], references: [id])
+
+  @@index([medicineId])
+  @@index([userId])
 }
 
-// Suppliers for medicines
 model Supplier {
   id          Int        @id @default(autoincrement())
   name        String
   contactInfo String?
-  medicines   Medicine[]
   address     String
+  medicines   Medicine[]
+
+  @@index([name])
 }
 
-// Payment and transaction records
 model Transaction {
   id          Int      @id @default(autoincrement())
   saleId      Int
-  paymentType String // e.g., "cash", "card"
+  paymentType String
   amountPaid  Float
   createdAt   DateTime @default(now())
+  
   sale Sale @relation(fields: [saleId], references: [id])
+
+  @@index([saleId])
 }
 
-// Audit log for tracking user activities
 model AuditLog {
   id        Int      @id @default(autoincrement())
   userId    Int
-  action    String // e.g., "created medicine", "updated stock"
+  action    String
   details   String?
   createdAt DateTime @default(now())
+  
   user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
 }

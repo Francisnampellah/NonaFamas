@@ -1,122 +1,62 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  // Create roles
-  const adminRole = await prisma.role.create({
-    data: { name: 'ADMIN' }
-  });
-  
-  const pharmacistRole = await prisma.role.create({
-    data: { name: 'PHARMACIST' }
-  });
-
-  // Create users
-  const users = await Promise.all([
-    prisma.user.create({
-      data: {
+  try {
+    // Create default admin user
+    const hashedPassword = await bcrypt.hash('admin123', 10);
+    const adminUser = await prisma.user.upsert({
+      where: { email: 'admin@example.com' },
+      update: {},
+      create: {
+        email: 'admin@example.com',
         name: 'Admin User',
-        email: 'admin@famasi.com',
-        password: 'hashed_password_123',
-        roleId: adminRole.id
+        password: hashedPassword,
       }
-    }),
-    prisma.user.create({
-      data: {
-        name: 'John Pharmacist',
-        email: 'john@famasi.com',
-        password: 'hashed_password_456',
-        roleId: pharmacistRole.id
-      }
-    })
-  ]);
+    });
 
-  // Create suppliers
-  const suppliers = await Promise.all([
-    prisma.supplier.create({
-      data: {
-        name: 'Pharma Plus Ltd',
-        contactInfo: 'contact@pharmaplus.com',
-        address: '123 Pharma Street'
+    // Create sample supplier
+    const supplier = await prisma.supplier.upsert({
+      where: { id: 1 },
+      update: {},
+      create: {
+        name: 'Sample Supplier',
+        contactInfo: '+27123456789',
+        address: '123 Main Street',
       }
-    }),
-    prisma.supplier.create({
-      data: {
-        name: 'MediCore Supplies',
-        contactInfo: 'info@medicore.com',
-        address: '456 Health Avenue'
-      }
-    })
-  ]);
+    });
 
-  // Create medicines
-  const medicines = await Promise.all([
-    prisma.medicine.create({
-      data: {
+    // Create sample medicine
+    const medicine = await prisma.medicine.upsert({
+      where: { id: 1 },
+      update: {},
+      create: {
         name: 'Paracetamol',
-        description: 'Pain reliever and fever reducer',
-        price: 5.99,
-        quantity: 200,
-        supplierId: suppliers[0].id
+        description: 'Pain relief medication',
+        package: '500mg tablets',
+        price: 29.99,
+        quantity: 100,
+        supplierId: supplier.id
       }
-    }),
-    prisma.medicine.create({
-      data: {
-        name: 'Amoxicillin',
-        description: 'Antibiotic medication',
-        price: 12.99,
-        quantity: 150,
-        supplierId: suppliers[0].id
-      }
-    }),
-    prisma.medicine.create({
-      data: {
-        name: 'Ibuprofen',
-        description: 'Anti-inflammatory drug',
-        price: 7.99,
-        quantity: 180,
-        supplierId: suppliers[1].id
-      }
-    })
-  ]);
+    });
 
-  // Create inventory records
-  await Promise.all([
-    prisma.inventory.create({
-      data: {
-        medicineId: medicines[0].id,
-        quantity: 200,
-        action: 'restock',
-        userId: users[0].id
-      }
-    }),
-    prisma.inventory.create({
-      data: {
-        medicineId: medicines[1].id,
-        quantity: 150,
-        action: 'restock',
-        userId: users[0].id
-      }
-    }),
-    prisma.inventory.create({
-      data: {
-        medicineId: medicines[2].id,
-        quantity: 180,
-        action: 'restock',
-        userId: users[1].id
-      }
-    })
-  ]);
-
-  console.log('Seed data created successfully');
+    console.log('Seed data created successfully:', {
+      adminUser,
+      supplier,
+      medicine
+    });
+  } catch (error) {
+    console.error('Error seeding data:', error);
+    throw error;
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
 main()
   .catch((e) => {
-    console.error('Error seeding data:', e);
+    console.error(e);
     process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
   });
