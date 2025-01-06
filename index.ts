@@ -2,6 +2,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 import authRoutes from './src/routes/authRoutes';
+import medicineRoutes from './src/routes/medicineRoutes';
 
 dotenv.config();
 
@@ -30,6 +31,8 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 
 // Medicine routes
+app.use('api/medicines', medicineRoutes);
+
 
 
 // Error handling middleware

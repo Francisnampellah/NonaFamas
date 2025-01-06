@@ -1,9 +1,11 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { validateInventory } from '../validators/inventory.validator';
+import multer from 'multer';
 import { parse } from 'csv-parse';
 
 const prisma = new PrismaClient();
+const upload = multer();
 
 export const inventoryController = {
   async addStock(req: Request, res: Response) {
@@ -213,3 +215,5 @@ export const inventoryController = {
     }
   }
 };
+
+export const uploadMiddleware = upload.single('file');
