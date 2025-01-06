@@ -7,6 +7,7 @@ import medicineRoutes from './routes/medicineRoutes.js';
 import saleRoutes from './routes/saleRoutes.js';
 import supplierRoutes from './routes/supplierRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
+import auditLogRoutes from './routes/auditLogRoutes.js';
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use('/api/medicines', medicineRoutes);
 app.use('/api/sales', saleRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/audit-logs', auditLogRoutes);
 
 // Basic health check route
 app.get('/health', (req:any, res:any) => {
