@@ -7,10 +7,34 @@ const prisma = new PrismaClient();
 export const medicineController = {
   async create(req: Request, res: Response) {
     try {
-      const { name, description, packageType, unitPrice, stockCount, supplierId } = req.body;
+      const { name, description, packageType, unitPrice, stockCount, supplierId, supplier } = req.body;
       const validationError = validateMedicine(req.body);
       if (validationError) {
         return res.status(400).json({ error: validationError });
+      }
+
+      let finalSupplierId = supplierId;
+
+      // If supplierId is not provided but supplier details are
+      if (!supplierId && supplier) {
+        // Check if supplier exists by name
+        let existingSupplier = await prisma.supplier.findFirst({
+          where: { name: supplier.name }
+        });
+
+        if (!existingSupplier) {
+          // Create new supplier if doesn't exist
+          existingSupplier = await prisma.supplier.create({
+            data: {
+              name: supplier.name,
+              contactInfo: supplier.contact,
+              email: supplier.email,
+              address: supplier.address
+            }
+          });
+        }
+
+        finalSupplierId = existingSupplier.id;
       }
 
       const medicine = await prisma.medicine.create({
@@ -20,7 +44,10 @@ export const medicineController = {
           packageType,
           unitPrice,
           stockCount,
-          supplierId
+          supplierId: finalSupplierId
+        },
+        include: {
+          supplier: true
         }
       });
 

@@ -89,6 +89,7 @@ model Supplier {
   id          Int        @id @default(autoincrement())
   name        String
   contactInfo String?
+  email     String
   address     String
   medicines   Medicine[]
 

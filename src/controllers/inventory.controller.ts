@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { validateInventory } from '../validators/inventory.validator';
-import csv from 'csv-parse';
+import { parse } from 'csv-parse';
 
 const prisma = new PrismaClient();
 
@@ -115,7 +115,7 @@ export const inventoryController = {
 
     try {
       const records: any[] = [];
-      const parser = csv.parse({
+      const parser = parse({
         columns: true,
         skip_empty_lines: true
       });
@@ -190,6 +190,26 @@ export const inventoryController = {
       });
     } catch (error: any) {
       res.status(500).json({ error: 'Failed to process bulk upload', details: error.message });
+    }
+  },
+
+  getAllInventory: async (req: Request, res: Response) => {
+    try {
+      const inventory = await prisma.inventory.findMany({
+        include: {
+          medicine: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          }
+        }
+      });
+      res.json(inventory);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch inventory' });
     }
   }
 };
