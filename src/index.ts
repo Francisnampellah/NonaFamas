@@ -1,9 +1,12 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
-import authRoutes from './routes/authRoutes';
-import inventoryRoutes from './routes/inventoryRoutes';
-import medicineRoutes from './routes/medicineRoutes';
+import authRoutes from './routes/authRoutes.js';
+import inventoryRoutes from './routes/inventoryRoutes.js';
+import medicineRoutes from './routes/medicineRoutes.js';
+import saleRoutes from './routes/saleRoutes.js';
+import supplierRoutes from './routes/supplierRoutes.js';
+import transactionRoutes from './routes/transactionRoutes.js';
 
 dotenv.config();
 
@@ -17,6 +20,9 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/medicines', medicineRoutes);
+app.use('/api/sales', saleRoutes);
+app.use('/api/suppliers', supplierRoutes);
+app.use('/api/transactions', transactionRoutes);
 
 // Basic health check route
 app.get('/health', (req:any, res:any) => {
