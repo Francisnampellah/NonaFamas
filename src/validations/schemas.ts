@@ -70,4 +70,17 @@ export const stockSchema = Joi.object({
 
 export const stockAdjustmentSchema = Joi.object({
   adjustment: Joi.number().integer().required()
+});
+
+export const sellSchema = Joi.object({
+  medicineId: Joi.number().required().messages({
+    'number.base': 'Medicine ID must be a number',
+    'any.required': 'Medicine ID is required'
+  }),
+  quantity: Joi.number().integer().min(1).required().messages({
+    'number.base': 'Quantity must be a number',
+    'number.integer': 'Quantity must be an integer',
+    'number.min': 'Quantity must be at least 1',
+    'any.required': 'Quantity is required'
+  })
 }); 

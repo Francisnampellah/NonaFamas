@@ -10,6 +10,7 @@ import purchaseRoutes from './routes/purchaseRoute.js';
 import supplierRoutes from './routes/supplierRoute.js';
 import unitRoutes from './routes/unitRoute.js';
 import stockRoutes from './routes/stockRoute.js'
+import sellRoutes from './routes/sell.routes.js';
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.use('/api/purchases', purchaseRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/units', unitRoutes);
 app.use('/api/stocks', stockRoutes);
+app.use('/api/sells', sellRoutes);
 
 
 // Basic health check route

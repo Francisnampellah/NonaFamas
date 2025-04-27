@@ -19,6 +19,7 @@ model User {
   password   String
   role       UserRole     @default(PHARMACIST)
   purchases  Purchase[]   
+  sells      Sell[]
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
@@ -78,6 +79,7 @@ model Medicine {
   category       Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   stock          Stock?        
   purchases      Purchase[]    
+  sells          Sell[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -109,4 +111,19 @@ model Stock {
   medicine     Medicine   @relation(fields: [medicineId], references: [id], onDelete: Cascade)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+}
+
+model Sell {
+  id           Int        @id @default(autoincrement())
+  medicineId   Int
+  userId       Int
+  quantity     Int
+  totalPrice   Decimal    @db.Decimal(10,2)
+  medicine     Medicine   @relation(fields: [medicineId], references: [id], onDelete: Restrict)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([medicineId])
+  @@index([userId])
 }
