@@ -2,13 +2,14 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
-import authRoutes from './routes/authRoutes.js';
-import inventoryRoutes from './routes/inventoryRoutes.js';
-import medicineRoutes from './routes/medicineRoutes.js';
-import saleRoutes from './routes/saleRoutes.js';
-import supplierRoutes from './routes/supplierRoutes.js';
-import transactionRoutes from './routes/transactionRoutes.js';
-import auditLogRoutes from './routes/auditLogRoutes.js';
+import authRoutes from './routes/authRoute.js';
+import medicineRoutes from './routes/medicineRoute.js';
+import categoryRoutes from './routes/categoryRoute.js';
+import manufacturerRoutes from './routes/manufacturerRoute.js';
+import purchaseRoutes from './routes/purchaseRoute.js';
+import supplierRoutes from './routes/supplierRoute.js';
+import unitRoutes from './routes/unitRoute.js';
+import stockRoutes from './routes/stockRoute.js'
 
 dotenv.config();
 
@@ -20,7 +21,7 @@ app.use(express.json());
 
 // Configure CORS
 app.use(cors({
-  origin: 'http://localhost:5173', // Your frontend URL
+  origin: '*', // Your frontend URL
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -28,12 +29,14 @@ app.use(cors({
 
 // Routes middleware
 app.use('/api/auth', authRoutes);
-app.use('/api/inventory', inventoryRoutes);
 app.use('/api/medicines', medicineRoutes);
-app.use('/api/sales', saleRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/manufacturers', manufacturerRoutes);
+app.use('/api/purchases', purchaseRoutes);
 app.use('/api/suppliers', supplierRoutes);
-app.use('/api/transactions', transactionRoutes);
-app.use('/api/audit-logs', auditLogRoutes);
+app.use('/api/units', unitRoutes);
+app.use('/api/stocks', stockRoutes);
+
 
 // Basic health check route
 app.get('/health', (req:any, res:any) => {

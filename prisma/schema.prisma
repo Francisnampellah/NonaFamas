@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,110 +7,106 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        Int         @id @default(autoincrement())
-  email     String      @unique
-  name      String
-  password  String
-  role      Role        @default(USER)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  sales     Sale[]
-  inventory Inventory[]
-  auditLogs AuditLog[]
-
-  @@index([email])
-}
-
-enum Role {
-  USER
-  ADMIN
+enum UserRole {
+  ADMINISTRATOR
   PHARMACIST
 }
 
-model Medicine {
-  id          Int         @id @default(autoincrement())
-  name        String
-  description String?
-  packageType String      // Renamed from package for clarity
-  unitPrice   Float       // Renamed from price for clarity
-  stockCount  Int         @default(0) // Renamed from quantity
-  elementId   Int?        // Renamed from element
-  supplierId  Int?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  
-  supplier    Supplier?   @relation(fields: [supplierId], references: [id])
-  sales       Sale[]
-  inventory   Inventory[]
+model User {
+  id         Int          @id @default(autoincrement())
+  name       String
+  email      String       @unique
+  password   String
+  role       UserRole     @default(PHARMACIST)
+  purchases  Purchase[]   
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
-  @@index([name])
-  @@index([supplierId])
+  @@index([role])
 }
 
-model Sale {
-  id         Int           @id @default(autoincrement())
-  medicineId Int
-  quantity   Int
-  totalPrice Float
-  userId     Int?
-  createdAt  DateTime      @default(now())
-  
-  medicine     Medicine      @relation(fields: [medicineId], references: [id])
-  user         User?         @relation(fields: [userId], references: [id])
-  transactions Transaction[]
-
-  @@index([medicineId])
-  @@index([userId])
+model Manufacturer {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  medicines   Medicine[]   
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
-model Inventory {
-  id         Int      @id @default(autoincrement())
-  medicineId Int
-  quantity   Int
-  actionType String   // Renamed from action for clarity
-  userId     Int
-  createdAt  DateTime @default(now())
+model Unit {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  medicines   Medicine[]   
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
 
-  medicine Medicine @relation(fields: [medicineId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
-
-  @@index([medicineId])
-  @@index([userId])
+model Category {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  medicines   Medicine[]   
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
 model Supplier {
-  id          Int        @id @default(autoincrement())
+  id          Int          @id @default(autoincrement())
   name        String
-  contactInfo String?
-  email     String
-  address     String
-  medicines   Medicine[]
-
-  @@index([name])
+  contact     String?
+  purchases   Purchase[]   
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
-model Transaction {
-  id          Int      @id @default(autoincrement())
-  saleId      Int
-  paymentType String
-  amountPaid  Float
-  createdAt   DateTime @default(now())
-  
-  sale Sale @relation(fields: [saleId], references: [id])
-
-  @@index([saleId])
+model Batch {
+  id           Int          @id @default(autoincrement())
+  purchaseDate DateTime     @default(now())
+  purchases    Purchase[]   
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 }
 
-model AuditLog {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  action    String
-  details   String?
-  createdAt DateTime @default(now())
-  
-  user User @relation(fields: [userId], references: [id])
+model Medicine {
+  id             Int           @id @default(autoincrement())
+  name           String
+  manufacturerId Int
+  unitId         Int
+  categoryId     Int
+  sellPrice      Decimal       @db.Decimal(10,2)
+  manufacturer   Manufacturer  @relation(fields: [manufacturerId], references: [id], onDelete: Restrict)
+  unit           Unit          @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  category       Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  stock          Stock?        
+  purchases      Purchase[]    
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
-  @@index([userId])
-  @@index([createdAt])
+  @@index([manufacturerId])
+  @@index([unitId])
+  @@index([categoryId])
+}
+
+model Purchase {
+  id            Int         @id @default(autoincrement())
+  medicineId    Int
+  batchId       Int
+  supplierId    Int
+  userId        Int
+  quantity      Int
+  costPerUnit   Decimal     @db.Decimal(10,2)
+  medicine      Medicine    @relation(fields: [medicineId], references: [id], onDelete: Restrict)
+  batch         Batch       @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  supplier      Supplier    @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Stock {
+  id           Int        @id @default(autoincrement())
+  medicineId   Int        @unique
+  quantity     Int
+  medicine     Medicine   @relation(fields: [medicineId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 }
