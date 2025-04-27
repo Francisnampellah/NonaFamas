@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { protect } from '../middleware/authMiddleware.js';
 import {
   createMedicine,
   getMedicines,
@@ -9,6 +10,7 @@ import {
 
 const router = Router();
 
+router.use(protect as any);
 router.post('/', createMedicine as any);
 router.get('/', getMedicines as any);
 router.get('/:id', getMedicineById as any);

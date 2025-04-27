@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { protect } from '../middleware/authMiddleware.js';
 import {
   createUnit,
   getUnits,
@@ -9,10 +10,11 @@ import {
 
 const router = Router();
 
-router.post('/', createUnit);
-router.get('/', getUnits);
+router.use(protect as any);
+router.post('/', createUnit as any);
+router.get('/', getUnits as any);
 router.get('/:id', getUnitById as any);
-router.put('/:id', updateUnit);
-router.delete('/:id', deleteUnit);
+router.put('/:id', updateUnit as any);
+router.delete('/:id', deleteUnit as any);
 
 export default router; 

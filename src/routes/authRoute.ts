@@ -5,6 +5,7 @@ import { Router } from "express";
 const router = Router();
 
 router.post("/register", register);
+router.post("/login", login as any);
 
 router.get("/logout", (req, res) => {
     // Clear the JWT token from the client-side storage (e.g., localStorage or cookies)

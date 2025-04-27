@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { protect } from '../middleware/authMiddleware.js';
 import {
   createPurchase,
   getPurchases,
@@ -8,9 +9,10 @@ import {
 
 const router = Router();
 
-router.post('/', createPurchase);
-router.get('/', getPurchases);
+router.use(protect as any);
+router.post('/', createPurchase as any);
+router.get('/', getPurchases as any);
 router.get('/:id', getPurchaseById as any);
-router.get('/medicine/:medicineId', getPurchasesByMedicine);
+router.get('/medicine/:medicineId', getPurchasesByMedicine as any);
 
 export default router; 
