@@ -102,7 +102,7 @@ model Purchase {
   user          User        @relation(fields: [userId], references: [id], onDelete: Restrict)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
-}
+} 
 
 model Stock {
   id           Int        @id @default(autoincrement())

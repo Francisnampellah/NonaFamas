@@ -30,14 +30,14 @@ app.use(cors({
 
 // Routes middleware
 app.use('/api/auth', authRoutes);
-app.use('/api/medicines', medicineRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/manufacturers', manufacturerRoutes);
-app.use('/api/purchases', purchaseRoutes);
-app.use('/api/suppliers', supplierRoutes);
-app.use('/api/units', unitRoutes);
-app.use('/api/stocks', stockRoutes);
-app.use('/api/sells', sellRoutes);
+app.use('/api/medicine', medicineRoutes);
+app.use('/api/category', categoryRoutes);
+app.use('/api/manufacturer', manufacturerRoutes);
+app.use('/api/purchase', purchaseRoutes);
+app.use('/api/supplier', supplierRoutes);
+app.use('/api/unit', unitRoutes);
+app.use('/api/stock', stockRoutes);
+app.use('/api/sell', sellRoutes);
 
 
 // Basic health check route
