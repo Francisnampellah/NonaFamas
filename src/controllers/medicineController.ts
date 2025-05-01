@@ -36,6 +36,21 @@ export const createMedicine = async (req: Request, res: Response) => {
       manufacturerId = parseInt(manufacturer); // Convert string ID to number
     }
 
+    // Check if medicine with same name and manufacturer already exists
+    const existingMedicine = await prisma.medicine.findFirst({
+      where: {
+        name,
+        manufacturerId,
+      },
+    });
+
+    if (existingMedicine) {
+      return res.status(400).json({ 
+        error: 'Medicine already exists', 
+        details: 'A medicine with this name and manufacturer combination already exists' 
+      });
+    }
+
     // Handle unit (create if not exists)
     let unitId;
     if (isNaN(Number(unit))) { // Check if unit is a name (not an ID)
@@ -325,6 +340,23 @@ export const bulkUploadMedicines = async (req: MulterRequest, res: Response) => 
           } else {
             manufacturerId = existingManufacturer.id;
           }
+        }
+
+        // Check if medicine with same name and manufacturer already exists
+        const existingMedicine = await prisma.medicine.findFirst({
+          where: {
+            name,
+            manufacturerId,
+          },
+        });
+
+        if (existingMedicine) {
+          errors.push({
+            row: i,
+            error: 'Medicine already exists',
+            details: 'A medicine with this name and manufacturer combination already exists'
+          });
+          continue;
         }
 
         // Handle unit (create if not exists)

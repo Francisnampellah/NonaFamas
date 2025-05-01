@@ -12,7 +12,7 @@ import unitRoutes from './routes/unitRoute.js';
 import stockRoutes from './routes/stockRoute.js'
 import sellRoutes from './routes/sell.routes.js';
 import excelRoutes from './routes/excelMedicineRoutes.js';
-
+import excelStockRoutes from './routes/excelStockRoute.js';
 dotenv.config();
 
 const app = express();
@@ -40,7 +40,7 @@ app.use('/api/unit', unitRoutes);
 app.use('/api/stock', stockRoutes);
 app.use('/api/sell', sellRoutes);
 app.use('/api/excel', excelRoutes);
-
+app.use('/api/excel-stock', excelStockRoutes);
 // Basic health check route
 app.get('/health', (req:any, res:any) => {
   res.json({ status: 'ok' });
