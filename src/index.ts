@@ -11,7 +11,7 @@ import supplierRoutes from './routes/supplierRoute.js';
 import unitRoutes from './routes/unitRoute.js';
 import stockRoutes from './routes/stockRoute.js'
 import sellRoutes from './routes/sell.routes.js';
-import excelRoutes from './routes/excelRoutes.js';
+import excelRoutes from './routes/excelMedicineRoutes.js';
 
 dotenv.config();
 

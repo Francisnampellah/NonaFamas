@@ -2,6 +2,16 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import ExcelJS from 'exceljs';
 
+// Add type for file upload
+interface MulterRequest extends Request {
+  file?: {
+    buffer: Buffer;
+    originalname: string;
+    mimetype: string;
+    size: number;
+  };
+}
+
 const prisma = new PrismaClient();
 
 export const createMedicine = async (req: Request, res: Response) => {
@@ -254,5 +264,149 @@ export const deleteMedicine = async (req: Request, res: Response) => {
     res.status(200).json({ message: 'Medicine deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Error deleting medicine', details: error });
+  }
+};
+
+export const bulkUploadMedicines = async (req: MulterRequest, res: Response) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
+  try {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(req.file.buffer);
+    const worksheet = workbook.getWorksheet('Medicines');
+
+    if (!worksheet) {
+      return res.status(400).json({ error: 'Invalid Excel file format. Please use the provided template.' });
+    }
+
+    const medicines = [];
+    const errors = [];
+
+    // Start from row 2 to skip headers
+    for (let i = 2; i <= worksheet.rowCount; i++) {
+      const row = worksheet.getRow(i);
+      const values = row.values as any[];
+      console.log('Row', i, 'values:', values);
+
+      // Only skip if the row is truly empty (no name)
+      if (!values || values.length < 2 || !values[1] || String(values[1]).trim() === '') continue;
+
+      const name = String(values[1]).trim();
+      const manufacturer = String(values[2] ?? '').trim();
+      const category = String(values[3] ?? '').trim();
+      const unit = String(values[4] ?? '').trim();
+      const sellPrice = String(values[5] ?? '').trim();
+      const quantity = String(values[6] ?? '').trim();
+
+      try {
+        // Helper function to extract ID from "ID - Name" format
+        const extractId = (value: string): number | null => {
+          if (!value) return null;
+          const match = value.match(/^(\d+)\s*-\s*/);
+          return match ? parseInt(match[1]) : null;
+        };
+
+        // Handle manufacturer (create if not exists)
+        let manufacturerId;
+        const manufacturerIdFromValue = extractId(manufacturer);
+        if (manufacturerIdFromValue) {
+          manufacturerId = manufacturerIdFromValue;
+        } else {
+          const existingManufacturer = await prisma.manufacturer.findUnique({
+            where: { name: manufacturer },
+          });
+          if (!existingManufacturer) {
+            const newManufacturer = await prisma.manufacturer.create({
+              data: { name: manufacturer },
+            });
+            manufacturerId = newManufacturer.id;
+          } else {
+            manufacturerId = existingManufacturer.id;
+          }
+        }
+
+        // Handle unit (create if not exists)
+        let unitId;
+        const unitIdFromValue = extractId(unit);
+        if (unitIdFromValue) {
+          unitId = unitIdFromValue;
+        } else {
+          const existingUnit = await prisma.unit.findUnique({
+            where: { name: unit },
+          });
+          if (!existingUnit) {
+            const newUnit = await prisma.unit.create({
+              data: { name: unit },
+            });
+            unitId = newUnit.id;
+          } else {
+            unitId = existingUnit.id;
+          }
+        }
+
+        // Handle category (create if not exists)
+        let categoryId;
+        const categoryIdFromValue = extractId(category);
+        if (categoryIdFromValue) {
+          categoryId = categoryIdFromValue;
+        } else {
+          const existingCategory = await prisma.category.findUnique({
+            where: { name: category },
+          });
+          if (!existingCategory) {
+            const newCategory = await prisma.category.create({
+              data: { name: category },
+            });
+            categoryId = newCategory.id;
+          } else {
+            categoryId = existingCategory.id;
+          }
+        }
+
+        // Create the medicine
+        const medicine = await prisma.medicine.create({
+          data: {
+            name,
+            manufacturerId,
+            unitId,
+            categoryId,
+            sellPrice: parseFloat(sellPrice),
+          },
+          include: {
+            manufacturer: true,
+            unit: true,
+            category: true,
+          },
+        });
+
+        // Create stock entry
+        await prisma.stock.create({
+          data: {
+            medicineId: medicine.id,
+            quantity: parseInt(quantity) || 0,
+          },
+        });
+
+        medicines.push(medicine);
+      } catch (error) {
+        errors.push({
+          row: i,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    res.status(201).json({
+      message: 'Bulk upload completed',
+      successCount: medicines.length,
+      errorCount: errors.length,
+      medicines,
+      errors,
+    });
+  } catch (error) {
+    console.error('Error processing bulk upload:', error);
+    res.status(500).json({ error: 'Error processing bulk upload', details: error });
   }
 };
