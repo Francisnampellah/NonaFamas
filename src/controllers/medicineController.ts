@@ -15,7 +15,7 @@ interface MulterRequest extends Request {
 const prisma = new PrismaClient();
 
 export const createMedicine = async (req: Request, res: Response) => {
-  const { name, manufacturer, unit, category, sellPrice, quantity } = req.body;
+  const { name, manufacturer, unit, category, sellPrice, quantity, dosage } = req.body;
 
   try {
     // Handle manufacturer (create if not exists)
@@ -95,13 +95,14 @@ export const createMedicine = async (req: Request, res: Response) => {
         unitId,
         categoryId,
         sellPrice,
+        dosage,
       },
       include: {
         manufacturer: true,
         unit: true,
         category: true,
       },
-          });
+    });
 
     // Create stock entry for the medicine
     const stock = await prisma.stock.create({
@@ -146,7 +147,7 @@ export const getMedicineTemplate = async (req: Request, res: Response) => {
     const sheet = workbook.addWorksheet('Medicines');
 
     // Add headers
-    sheet.addRow(['Name', 'Manufacturer (ID or Name)', 'Category (ID or Name)', 'Unit (ID or Name)', 'Sell Price', 'Quantity']);
+    sheet.addRow(['Name', 'Manufacturer (ID or Name)', 'Category (ID or Name)', 'Unit (ID or Name)', 'Sell Price', 'Quantity', 'Dosage']);
     
     // Set column definitions
     sheet.columns = [
@@ -156,6 +157,7 @@ export const getMedicineTemplate = async (req: Request, res: Response) => {
       { key: 'unit', width: 20 },
       { key: 'sellPrice', width: 15 },
       { key: 'quantity', width: 15 },
+      { key: 'dosage', width: 20 },
     ];
 
     // Style the header row
@@ -278,6 +280,7 @@ export const deleteMedicine = async (req: Request, res: Response) => {
 
     res.status(200).json({ message: 'Medicine deleted successfully' });
   } catch (error) {
+    console.log("Error deleting medicine", error)
     res.status(500).json({ error: 'Error deleting medicine', details: error });
   }
 };
@@ -314,6 +317,7 @@ export const bulkUploadMedicines = async (req: MulterRequest, res: Response) => 
       const unit = String(values[4] ?? '').trim();
       const sellPrice = String(values[5] ?? '').trim();
       const quantity = String(values[6] ?? '').trim();
+      const dosage = String(values[7] ?? '').trim();
 
       try {
         // Helper function to extract ID from "ID - Name" format
@@ -405,6 +409,7 @@ export const bulkUploadMedicines = async (req: MulterRequest, res: Response) => 
             unitId,
             categoryId,
             sellPrice: parseFloat(sellPrice),
+            dosage,
           },
           include: {
             manufacturer: true,

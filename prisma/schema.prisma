@@ -73,6 +73,7 @@ model Medicine {
   manufacturerId Int
   unitId         Int
   categoryId     Int
+  dosage         String?       // Optional dosage field
   sellPrice      Decimal       @db.Decimal(10,2)
   manufacturer   Manufacturer  @relation(fields: [manufacturerId], references: [id], onDelete: Restrict)
   unit           Unit          @relation(fields: [unitId], references: [id], onDelete: Restrict)
