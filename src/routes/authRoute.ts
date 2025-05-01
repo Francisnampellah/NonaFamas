@@ -1,4 +1,5 @@
-import { register,login } from "../controllers/authController.js";
+import { register, login, refreshToken, getCurrentUser } from "../controllers/authController.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 import { Router } from "express";
 
@@ -6,6 +7,8 @@ const router = Router();
 
 router.post("/register", register);
 router.post("/login", login as any);
+router.post("/refresh", refreshToken as any);
+router.get("/me", protect as any, getCurrentUser as any);
 
 router.get("/logout", (req, res) => {
     // Clear the JWT token from the client-side storage (e.g., localStorage or cookies)

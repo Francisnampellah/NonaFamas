@@ -1,15 +1,16 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import ExcelJS from 'exceljs';
 
 const prisma = new PrismaClient();
 
 export const createMedicine = async (req: Request, res: Response) => {
-  const { name, manufacturer, unit, category, sellPrice } = req.body;
+  const { name, manufacturer, unit, category, sellPrice, quantity } = req.body;
 
   try {
     // Handle manufacturer (create if not exists)
     let manufacturerId;
-    if (typeof manufacturer === 'string') {
+    if (isNaN(Number(manufacturer))) { // Check if manufacturer is a name (not an ID)
       const existingManufacturer = await prisma.manufacturer.findUnique({
         where: { name: manufacturer },
       });
@@ -22,12 +23,12 @@ export const createMedicine = async (req: Request, res: Response) => {
         manufacturerId = existingManufacturer.id;
       }
     } else {
-      manufacturerId = manufacturer;
+      manufacturerId = parseInt(manufacturer); // Convert string ID to number
     }
 
     // Handle unit (create if not exists)
     let unitId;
-    if (typeof unit === 'string') {
+    if (isNaN(Number(unit))) { // Check if unit is a name (not an ID)
       const existingUnit = await prisma.unit.findUnique({
         where: { name: unit },
       });
@@ -40,12 +41,12 @@ export const createMedicine = async (req: Request, res: Response) => {
         unitId = existingUnit.id;
       }
     } else {
-      unitId = unit;
+      unitId = parseInt(unit); // Convert string ID to number
     }
 
     // Handle category (create if not exists)
     let categoryId;
-    if (typeof category === 'string') {
+    if (isNaN(Number(category))) { // Check if category is a name (not an ID)
       const existingCategory = await prisma.category.findUnique({
         where: { name: category },
       });
@@ -58,7 +59,7 @@ export const createMedicine = async (req: Request, res: Response) => {
         categoryId = existingCategory.id;
       }
     } else {
-      categoryId = category;
+      categoryId = parseInt(category); // Convert string ID to number
     }
 
     // Create the medicine
@@ -74,15 +75,106 @@ export const createMedicine = async (req: Request, res: Response) => {
         manufacturer: true,
         unit: true,
         category: true,
+      },
+          });
+
+    // Create stock entry for the medicine
+    const stock = await prisma.stock.create({
+      data: {
+        medicineId: medicine.id,
+        quantity: +quantity || 0
+      }
+    });
+
+    // Fetch the complete medicine with stock
+    const medicineWithStock = await prisma.medicine.findUnique({
+      where: { id: medicine.id },
+      include: {
+        manufacturer: true,
+        unit: true,
+        category: true,
         stock: true,
       },
     });
 
-    res.status(201).json({ message: 'Medicine created successfully', medicine });
+    res.status(201).json({ message: 'Medicine created successfully', medicine: medicineWithStock });
   } catch (error) {
+    console.log("Error creating medicine", error)
     res.status(500).json({ error: 'Error creating medicine', details: error });
   }
 };
+
+
+
+export const getMedicineTemplate = async (req: Request, res: Response) => {
+  console.log("Fetching template")  
+  try {
+    // Fetch existing values
+
+    const [manufacturers, categories, units] = await Promise.all([
+      prisma.manufacturer.findMany(),
+      prisma.category.findMany(),
+      prisma.unit.findMany(),
+    ]);
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Medicines');
+
+    // Add headers
+    sheet.addRow(['Name', 'Manufacturer (ID or Name)', 'Category (ID or Name)', 'Unit (ID or Name)', 'Sell Price', 'Quantity']);
+    
+    // Set column definitions
+    sheet.columns = [
+      { key: 'name', width: 30 },
+      { key: 'manufacturer', width: 30 },
+      { key: 'category', width: 30 },
+      { key: 'unit', width: 20 },
+      { key: 'sellPrice', width: 15 },
+      { key: 'quantity', width: 15 },
+    ];
+
+    // Style the header row
+    const headerRow = sheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.commit();
+
+    // Create hidden sheet for dropdown data
+    const hiddenSheet = workbook.addWorksheet('Data');
+    hiddenSheet.state = 'veryHidden';
+
+    const addDropdownData = (items: any[], label: string, column: number) => {
+      items.forEach((item, i) => {
+        hiddenSheet.getCell(i + 1, column).value = `${item.id} - ${item.name}`;
+      });
+
+      // Reference string (e.g., 'Data!$A$1:$A$10')
+      const ref = String.fromCharCode(65 + column - 1); // Convert column number to letter (A=1, B=2, etc.)
+      const range = `Data!$${ref}$1:$${ref}$${items.length}`;
+
+      (sheet as any).dataValidations.add(`${label}2:${label}1000`, {
+        type: 'list',
+        allowBlank: true,
+        formulae: [range],
+        showErrorMessage: false, // Allow manual input
+      });
+    };
+
+    addDropdownData(manufacturers, 'B', 1); // Manufacturer → column B
+    addDropdownData(categories, 'C', 2);     // Category → column C
+    addDropdownData(units, 'D', 3);          // Unit → column D
+
+    // Send as download
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=medicine_template.xlsx');
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('Error generating template:', error);
+    res.status(500).json({ error: 'Failed to generate Excel template' });
+  }
+};
+
 
 export const getMedicines = async (req: Request, res: Response) => {
   try {
@@ -163,4 +255,4 @@ export const deleteMedicine = async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ error: 'Error deleting medicine', details: error });
   }
-}; 
+};

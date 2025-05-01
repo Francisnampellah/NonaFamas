@@ -47,10 +47,88 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ id: user.id, role: user.role }, SECRET_KEY, { expiresIn: '1h' });
-
-    res.status(200).json({ message: 'Login successful', token, user });
+    const accessToken = jwt.sign({ id: user.id, role: user.role }, SECRET_KEY, { expiresIn: '1h' });
+    const refreshToken = jwt.sign({ id: user.id }, SECRET_KEY, { expiresIn: '7d' });
+    
+    res.status(200).json({ 
+      message: 'Login successful', 
+      token: accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name
+      }
+    });
+    
   } catch (error) {
+    console.log(error);
     res.status(500).json({ error: 'Error logging in', details: error });
+  }
+};
+
+export const logout = async (req: Request, res: Response) => {
+  try {
+    // Invalidate the token on the client side by clearing it
+    res.status(200).json({ message: 'Logout successful' });
+  } catch (error) {
+    console.error('Error during logout:', error);
+    res.status(500).json({ error: 'Error during logout', details: error });
+  }
+};
+
+export const refreshToken = async (req: Request, res: Response) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(401).json({ error: 'Refresh token is required' });
+  }
+
+  try {
+    const decoded = jwt.verify(refreshToken, SECRET_KEY) as { id: string };
+    const user = await prisma.user.findUnique({ where: { id: parseInt(decoded.id) } });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const newAccessToken = jwt.sign({ id: user.id, role: user.role }, SECRET_KEY, { expiresIn: '1h' });
+    const newRefreshToken = jwt.sign({ id: user.id }, SECRET_KEY, { expiresIn: '7d' });
+
+    res.status(200).json({
+      token: newAccessToken,
+      refreshToken: newRefreshToken
+    });
+  } catch (error) {
+    return res.status(401).json({ error: 'Invalid refresh token' });
+  }
+};
+
+export const getCurrentUser = async (req: Request, res: Response) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, SECRET_KEY) as { id: string };
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(decoded.id) },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid token' });
   }
 };

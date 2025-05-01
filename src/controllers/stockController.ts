@@ -80,7 +80,7 @@ export const updateStock = async (req: Request, res: Response) => {
 
 export const adjustStock = async (req: Request, res: Response) => {
   const { medicineId } = req.params;
-  const { adjustment } = req.body; // Positive number for addition, negative for subtraction
+  const { quantity } = req.body; // Positive number for addition, negative for subtraction
 
   try {
     const currentStock = await prisma.stock.findUnique({
@@ -91,7 +91,7 @@ export const adjustStock = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Stock not found for this medicine' });
     }
 
-    const newQuantity = currentStock.quantity + adjustment;
+    const newQuantity = currentStock.quantity + quantity;
     if (newQuantity < 0) {
       return res.status(400).json({ error: 'Insufficient stock for this adjustment' });
     }

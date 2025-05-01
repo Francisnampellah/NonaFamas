@@ -11,6 +11,7 @@ import supplierRoutes from './routes/supplierRoute.js';
 import unitRoutes from './routes/unitRoute.js';
 import stockRoutes from './routes/stockRoute.js'
 import sellRoutes from './routes/sell.routes.js';
+import excelRoutes from './routes/excelRoutes.js';
 
 dotenv.config();
 
@@ -23,7 +24,7 @@ app.use(express.json());
 // Configure CORS
 app.use(cors({
   origin: '*', // Your frontend URL
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS','PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
@@ -32,13 +33,13 @@ app.use(cors({
 app.use('/api/auth', authRoutes);
 app.use('/api/medicine', medicineRoutes);
 app.use('/api/category', categoryRoutes);
-app.use('/api/manufacturer', manufacturerRoutes);
+app.use('/api/manufacture', manufacturerRoutes);
 app.use('/api/purchase', purchaseRoutes);
 app.use('/api/supplier', supplierRoutes);
 app.use('/api/unit', unitRoutes);
 app.use('/api/stock', stockRoutes);
 app.use('/api/sell', sellRoutes);
-
+app.use('/api/excel', excelRoutes);
 
 // Basic health check route
 app.get('/health', (req:any, res:any) => {

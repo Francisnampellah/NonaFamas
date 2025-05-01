@@ -17,4 +17,4 @@ router.get('/:id', getManufacturerById as any);
 router.put('/:id', updateManufacturer as any);
 router.delete('/:id', deleteManufacturer as any);
 
-export default router; 
+export default router;  
