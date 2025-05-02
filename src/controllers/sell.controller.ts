@@ -1,7 +1,5 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { sellSchema } from '../validations/schemas.js';
-import { validate } from '../middleware/validate.js';
 
 const prisma = new PrismaClient();
 
@@ -12,113 +10,103 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-interface SellWithMedicine {
-  id: number;
-  medicineId: number;
-  userId: number;
-  quantity: number;
-  totalPrice: number;
-  createdAt: Date;
-  medicine: {
-    name: string;
-    sellPrice: number;
-  };
-}
+export const createSell = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { medicineId, quantity } = req.body;
+    const userId = req.user?.id;
 
-export const createSells = async (req: AuthenticatedRequest, res: Response) => {
-    try {
-      const { medicineId, quantity } = req.body;
-      const userId = req.user?.id;
-
-      console.log('Creating sell:', { medicineId, quantity, userId });
-
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message: 'Unauthorized'
-        });
-      }
-
-      // Check if medicine exists
-      console.log('Checking medicine with ID:', medicineId);
-      const medicine = await prisma.medicine.findUnique({
-        where: { id: medicineId },
-        include: { stock: true }
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
       });
+    }
 
-      console.log('Found medicine:', medicine);
-
-      if (!medicine) {
-        console.log('Medicine not found for ID:', medicineId);
-        return res.status(404).json({
-          success: false,
-          message: 'Medicine not found'
-        });
-      }
-
-      // Check if there's enough stock
-      console.log('Checking stock:', medicine.stock);
-      if (!medicine.stock || medicine.stock.quantity < quantity) {
-        console.log('Insufficient stock:', { 
-          available: medicine.stock?.quantity, 
-          requested: quantity 
-        });
-        return res.status(400).json({
-          success: false,
-          message: 'Insufficient stock'
-        });
-      }
-
-      // Calculate total price
-      const totalPrice = medicine.sellPrice.mul(quantity);
-
-      // Start a transaction to ensure data consistency
-      const result = await prisma.$transaction(async (tx) => {
-        // Create the sell record
-        const sell = await (tx as any).sell.create({
-          data: {
-            medicineId,
-            userId,
-            quantity,
-            totalPrice
-          }
-        });
-
-        // Update stock quantity
-        await tx.stock.update({
-          where: { medicineId },
-          data: {
-            quantity: {
-              decrement: quantity
-            }
-          }
-        });
-
-        return sell;
+    // Validate required fields
+    if (!medicineId || !quantity) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields'
       });
+    }
 
-      res.status(201).json({
-        success: true,
-        message: 'Sale recorded successfully',
+    // Check if medicine exists
+    const medicine = await prisma.medicine.findUnique({
+      where: { id: medicineId },
+      include: { stock: true }
+    });
+
+    if (!medicine) {
+      return res.status(404).json({
+        success: false,
+        message: 'Medicine not found'
+      });
+    }
+
+    // Check if there's enough stock
+    if (!medicine.stock || medicine.stock.quantity < quantity) {
+      return res.status(400).json({
+        success: false,
+        message: 'Insufficient stock',
         data: {
-          sell: {
-            id: result.id,
-            medicineId: result.medicineId,
-            quantity: result.quantity,
-            totalPrice: result.totalPrice,
-            createdAt: result.createdAt
+          available: medicine.stock?.quantity,
+          requested: quantity
+        }
+      });
+    }
+
+    // Calculate total price
+    const totalPrice = medicine.sellPrice.mul(quantity);
+
+    // Start a transaction to ensure data consistency
+    const result = await prisma.$transaction(async (tx) => {
+      // Create the sell record
+      const sell = await tx.sell.create({
+        data: {
+          medicineId,
+          userId,
+          quantity,
+          totalPrice
+        },
+        include: {
+          medicine: {
+            include: {
+              manufacturer: true,
+              unit: true,
+              category: true,
+            }
+          },
+          user: true
+        }
+      });
+
+      // Update stock quantity
+      await tx.stock.update({
+        where: { medicineId },
+        data: {
+          quantity: {
+            decrement: quantity
           }
         }
       });
-    } catch (error) {
-      console.error('Sell creation error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Server error'
-      });
-    }
+
+      return sell;
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Sale recorded successfully',
+      data: result
+    });
+  } catch (error) {
+    console.error('Sell creation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
-;
+};
 
 export const getSells = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -146,16 +134,17 @@ export const getSells = async (req: AuthenticatedRequest, res: Response) => {
       where.medicineId = parseInt(medicineId as string);
     }
 
-    // Get sells with related data
-    const sells = await (prisma as any).sell.findMany({
+    const sells = await prisma.sell.findMany({
       where,
       include: {
         medicine: {
-          select: {
-            name: true,
-            sellPrice: true
+          include: {
+            manufacturer: true,
+            unit: true,
+            category: true,
           }
-        }
+        },
+        user: true
       },
       orderBy: {
         createdAt: 'desc'
@@ -164,25 +153,14 @@ export const getSells = async (req: AuthenticatedRequest, res: Response) => {
 
     res.json({
       success: true,
-      data: {
-        sells: sells.map((sell: SellWithMedicine) => ({
-          id: sell.id,
-          medicine: {
-            id: sell.medicineId,
-            name: sell.medicine.name,
-            price: sell.medicine.sellPrice
-          },
-          quantity: sell.quantity,
-          totalPrice: sell.totalPrice,
-          createdAt: sell.createdAt
-        }))
-      }
+      data: sells
     });
   } catch (error) {
     console.error('Get sells error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error',
+      error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 };
@@ -199,18 +177,20 @@ export const getSellById = async (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
-    const sell = await (prisma as any).sell.findFirst({
+    const sell = await prisma.sell.findFirst({
       where: {
         id: parseInt(id),
         userId
       },
       include: {
         medicine: {
-          select: {
-            name: true,
-            sellPrice: true
+          include: {
+            manufacturer: true,
+            unit: true,
+            category: true,
           }
-        }
+        },
+        user: true
       }
     });
 
@@ -223,25 +203,14 @@ export const getSellById = async (req: AuthenticatedRequest, res: Response) => {
 
     res.json({
       success: true,
-      data: {
-        sell: {
-          id: sell.id,
-          medicine: {
-            id: sell.medicineId,
-            name: sell.medicine.name,
-            price: sell.medicine.sellPrice
-          },
-          quantity: sell.quantity,
-          totalPrice: sell.totalPrice,
-          createdAt: sell.createdAt
-        }
-      }
+      data: sell
     });
   } catch (error) {
     console.error('Get sell by ID error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error',
+      error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 };

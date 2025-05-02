@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import ExcelJS from 'exceljs';
 
 // Add type for file upload
@@ -10,6 +10,11 @@ interface MulterRequest extends Request {
     mimetype: string;
     size: number;
   };
+}
+
+// Add type for authenticated request
+interface AuthenticatedRequest extends MulterRequest {
+  userId: number;
 }
 
 const prisma = new PrismaClient();
@@ -27,9 +32,17 @@ export const getStock = async (req: Request, res: Response) => {
         },
       },
     });
-    res.status(200).json(stock);
+    res.status(200).json({
+      success: true,
+      data: stock
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching stock', details: error });
+    console.error('Get stock error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Error fetching stock', 
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 
@@ -51,26 +64,41 @@ export const getStockByMedicineId = async (req: Request, res: Response) => {
     });
 
     if (!stock) {
-      return res.status(404).json({ error: 'Stock not found for this medicine' });
+      return res.status(404).json({ 
+        success: false,
+        error: 'Stock not found for this medicine' 
+      });
     }
 
-    res.status(200).json(stock);
+    res.status(200).json({
+      success: true,
+      data: stock
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching stock', details: error });
+    console.error('Get stock by medicine ID error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Error fetching stock', 
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 
 export const updateStock = async (req: Request, res: Response) => {
   const { medicineId } = req.params;
-  const { quantity } = req.body;
+  const { quantity, pricePerUnit } = req.body;
 
   try {
     const stock = await prisma.stock.upsert({
       where: { medicineId: parseInt(medicineId) },
-      update: { quantity },
+      update: { 
+        quantity,
+        pricePerUnit: pricePerUnit !== undefined ? pricePerUnit : undefined
+      },
       create: {
         medicineId: parseInt(medicineId),
         quantity,
+        pricePerUnit: pricePerUnit !== undefined ? pricePerUnit : undefined
       },
       include: {
         medicine: {
@@ -83,15 +111,32 @@ export const updateStock = async (req: Request, res: Response) => {
       },
     });
 
-    res.status(200).json({ message: 'Stock updated successfully', stock });
+    res.status(200).json({ 
+      success: true,
+      message: 'Stock updated successfully', 
+      data: stock 
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Error updating stock', details: error });
+    console.error('Update stock error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Error updating stock', 
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 
-export const adjustStock = async (req: Request, res: Response) => {
+export const adjustStock = async (req: AuthenticatedRequest, res: Response) => {
   const { medicineId } = req.params;
-  const { quantity } = req.body; // Positive number for addition, negative for subtraction
+  const { quantity, pricePerUnit, batchId } = req.body;
+  const userId = req.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ 
+      success: false,
+      error: 'User not authenticated' 
+    });
+  }
 
   try {
     const currentStock = await prisma.stock.findUnique({
@@ -99,17 +144,50 @@ export const adjustStock = async (req: Request, res: Response) => {
     });
 
     if (!currentStock) {
-      return res.status(404).json({ error: 'Stock not found for this medicine' });
+      return res.status(404).json({ 
+        success: false,
+        error: 'Stock not found for this medicine' 
+      });
     }
 
     const newQuantity = currentStock.quantity + quantity;
     if (newQuantity < 0) {
-      return res.status(400).json({ error: 'Insufficient stock for this adjustment' });
+      return res.status(400).json({ 
+        success: false,
+        error: 'Insufficient stock for this adjustment' 
+      });
+    }
+
+    // Create a new batch if batchId is not provided
+    let finalBatchId = batchId;
+    if (!batchId) {
+      const newBatch = await prisma.batch.create({
+        data: {
+          purchaseDate: new Date()
+        }
+      });
+      finalBatchId = newBatch.id;
+    }
+
+    // Create purchase record if quantity is positive (stock increase)
+    if (quantity > 0) {
+      await prisma.purchase.create({
+        data: {
+          medicineId: parseInt(medicineId),
+          batchId: finalBatchId,
+          userId,
+          quantity,
+          costPerUnit: new Prisma.Decimal(pricePerUnit || 0)
+        }
+      });
     }
 
     const updatedStock = await prisma.stock.update({
       where: { medicineId: parseInt(medicineId) },
-      data: { quantity: newQuantity },
+      data: { 
+        quantity: newQuantity,
+        pricePerUnit: pricePerUnit !== undefined ? new Prisma.Decimal(pricePerUnit) : undefined
+      },
       include: {
         medicine: {
           include: {
@@ -121,9 +199,18 @@ export const adjustStock = async (req: Request, res: Response) => {
       },
     });
 
-    res.status(200).json({ message: 'Stock adjusted successfully', stock: updatedStock });
+    res.status(200).json({ 
+      success: true,
+      message: 'Stock adjusted successfully', 
+      data: updatedStock 
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Error adjusting stock', details: error });
+    console.error('Adjust stock error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Error adjusting stock', 
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 
@@ -140,12 +227,13 @@ export const getStockUpdateTemplate = async (req: Request, res: Response) => {
     const sheet = workbook.addWorksheet('Stock Update');
 
     // Add headers
-    sheet.addRow(['Medicine (ID or Name)', 'Quantity']);
+    sheet.addRow(['Medicine (ID or Name)', 'Quantity', 'Cost Per Unit']);
     
     // Set column definitions
     sheet.columns = [
       { key: 'medicine', width: 40 },
       { key: 'quantity', width: 15 },
+      { key: 'costPerUnit', width: 15 },
     ];
 
     // Style the header row
@@ -183,93 +271,122 @@ export const getStockUpdateTemplate = async (req: Request, res: Response) => {
   }
 };
 
-export const bulkUpdateStock = async (req: MulterRequest, res: Response) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded' });
-  }
-
+export const bulkUpdateStock = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(req.file.buffer);
-    const worksheet = workbook.getWorksheet('Stock Update');
+    const batchId  = req.body.batchId;
+    const userId = req.user?.id;
 
-    if (!worksheet) {
-      return res.status(400).json({ error: 'Invalid template format' });
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const results = {
-      success: 0,
-      failed: 0,
-      errors: [] as string[],
-    };
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(req.file.buffer);
 
-    // Skip header row and process each row
+    const worksheet = workbook.getWorksheet(1);
+    if (!worksheet) {
+      return res.status(400).json({ error: 'Invalid Excel file format' });
+    }
+
+    const updates = [];
+    const errors = [];
+
+    // Skip header row
     for (let i = 2; i <= worksheet.rowCount; i++) {
       const row = worksheet.getRow(i);
       const medicineValue = row.getCell(1).value;
       const quantity = row.getCell(2).value;
+      const costPerUnit = row.getCell(3).value;
 
-      if (!medicineValue || !quantity) {
-        results.failed++;
-        results.errors.push(`Row ${i}: Missing required fields`);
+      console.log('Processing row:', { medicineValue, quantity, costPerUnit });
+
+      if (!medicineValue || !quantity || !costPerUnit) {
+        errors.push(`Row ${i}: Missing required fields`);
         continue;
       }
 
       try {
-        // Extract medicine ID or find by name
-        let medicineId: number;
-        if (typeof medicineValue === 'string') {
-          const match = medicineValue.match(/^(\d+)/);
-          if (match) {
-            medicineId = parseInt(match[1]);
-          } else {
-            // Try to find by name
-            const medicine = await prisma.medicine.findFirst({
-              where: {
-                name: medicineValue,
+        // Extract medicine ID from the format "1 - Paracetamol (PharmaCo)"
+        const match = String(medicineValue).match(/^(\d+)/);
+        if (!match) {
+          errors.push(`Row ${i}: Invalid medicine format - expected format: "1 - Medicine Name (Manufacturer)"`);
+          continue;
+        }
+        const medicineId = parseInt(match[1]);
+
+        // Create a new batch for this bulk update
+        // const batch = await prisma.batch.create({
+        //   data: {
+        //     purchaseDate: new Date(),
+        //   },
+        // });
+
+        // Create purchase record if quantity is positive
+        if (Number(quantity) > 0) {
+          await prisma.purchase.create({
+            data: {
+              medicine: {
+                connect: {
+                  id: medicineId
+                }
               },
-            });
-            if (!medicine) {
-              throw new Error(`Medicine not found: ${medicineValue}`);
-            }
-            medicineId = medicine.id;
-          }
-        } else if (typeof medicineValue === 'number') {
-          medicineId = medicineValue;
-        } else {
-          throw new Error(`Invalid medicine value: ${medicineValue}`);
+              batch: {
+                connect: {
+                  id: +batchId
+                }
+              },
+              user: {
+                connect: {
+                  id: userId
+                }
+              },
+              quantity: Number(quantity),
+              costPerUnit: new Prisma.Decimal(Number(costPerUnit)),
+            } as any, // Type assertion to bypass type checking
+          });
         }
 
-        // Get current stock
-        const currentStock = await prisma.stock.findUnique({
+        // Update or create stock
+        const stock = await prisma.stock.upsert({
           where: { medicineId },
-        });
-
-        const newQuantity = Number(quantity) + (currentStock?.quantity || 0);
-
-        // Update or create stock with the new total quantity
-        await prisma.stock.upsert({
-          where: { medicineId },
-          update: { quantity: newQuantity },
+          update: {
+            quantity: {
+              increment: Number(quantity),
+            },
+          },
           create: {
             medicineId,
             quantity: Number(quantity),
           },
         });
 
-        results.success++;
+        updates.push({
+          medicineId,
+          quantity,
+          costPerUnit,
+          newTotal: stock.quantity,
+        });
       } catch (error) {
-        results.failed++;
-        results.errors.push(`Row ${i}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        errors.push(`Row ${i}: ${errorMessage}`);
       }
     }
 
-    res.status(200).json({
-      message: 'Bulk stock update completed',
-      results,
+    if (errors.length > 0) {
+      return res.status(400).json({
+        message: 'Some updates failed',
+        updates,
+        errors,
+      });
+    }
+
+    res.json({
+      message: 'Stock updated successfully',
+      updates,
     });
   } catch (error) {
-    console.error('Error processing bulk stock update:', error);
-    res.status(500).json({ error: 'Error processing bulk stock update', details: error });
+    console.error('Error in bulkUpdateStock:', error);
+    res.status(500).json({ error: 'Failed to update stock' });
   }
 }; 

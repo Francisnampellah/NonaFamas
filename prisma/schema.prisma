@@ -53,8 +53,7 @@ model Category {
 model Supplier {
   id          Int          @id @default(autoincrement())
   name        String
-  contact     String?
-  purchases   Purchase[]   
+  contact     String? 
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
@@ -64,6 +63,7 @@ model Batch {
   purchaseDate DateTime     @default(now())
   purchases    Purchase[]   
   createdAt    DateTime     @default(now())
+  note         String?
   updatedAt    DateTime     @updatedAt
 }
 
@@ -93,13 +93,11 @@ model Purchase {
   id            Int         @id @default(autoincrement())
   medicineId    Int
   batchId       Int
-  supplierId    Int
   userId        Int
   quantity      Int
   costPerUnit   Decimal     @db.Decimal(10,2)
   medicine      Medicine    @relation(fields: [medicineId], references: [id], onDelete: Restrict)
   batch         Batch       @relation(fields: [batchId], references: [id], onDelete: Restrict)
-  supplier      Supplier    @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   user          User        @relation(fields: [userId], references: [id], onDelete: Restrict)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -109,6 +107,7 @@ model Stock {
   id           Int        @id @default(autoincrement())
   medicineId   Int        @unique
   quantity     Int
+  pricePerUnit Decimal?   @db.Decimal(10,2)
   medicine     Medicine   @relation(fields: [medicineId], references: [id], onDelete: Cascade)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt

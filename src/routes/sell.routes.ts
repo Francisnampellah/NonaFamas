@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createSells, getSells, getSellById } from '../controllers/sell.controller.js';
+import {  getSells, getSellById, createSell } from '../controllers/sell.controller.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = Router();
@@ -8,7 +8,7 @@ const router = Router();
 router.use(protect as any);
 
 // Create a new sell
-router.post('/', createSells as any);
+router.post('/', createSell as any);
 
 // Get all sells with optional filters
 router.get('/', getSells as any);
