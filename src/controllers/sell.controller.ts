@@ -12,7 +12,7 @@ interface AuthenticatedRequest extends Request {
 
 export const createSell = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { medicineId, quantity } = req.body;
+    const { medicineId, quantity, price } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
@@ -66,7 +66,7 @@ export const createSell = async (req: AuthenticatedRequest, res: Response) => {
           medicineId,
           userId,
           quantity,
-          totalPrice
+          totalPrice: price ? price : totalPrice
         },
         include: {
           medicine: {
