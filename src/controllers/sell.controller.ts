@@ -153,7 +153,7 @@ export const getSells = async (req: AuthenticatedRequest, res: Response) => {
 
     res.json({
       success: true,
-      data: sells
+      sells
     });
   } catch (error) {
     console.error('Get sells error:', error);
