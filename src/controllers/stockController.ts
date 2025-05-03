@@ -169,40 +169,69 @@ export const adjustStock = async (req: AuthenticatedRequest, res: Response) => {
       finalBatchId = newBatch.id;
     }
 
-    // Create purchase record if quantity is positive (stock increase)
-    if (quantity > 0) {
-      await prisma.purchase.create({
-        data: {
-          medicineId: parseInt(medicineId),
-          batchId: finalBatchId,
-          userId,
-          quantity,
-          costPerUnit: new Prisma.Decimal(pricePerUnit || 0)
+    // Start a transaction to ensure data consistency
+    const result = await prisma.$transaction(async (tx) => {
+      // Create purchase record if quantity is positive (stock increase)
+      let purchase = null;
+      if (quantity > 0) {
+        purchase = await tx.purchase.create({
+          data: {
+            medicineId: parseInt(medicineId),
+            batchId: finalBatchId,
+            userId,
+            quantity,
+            costPerUnit: new Prisma.Decimal(pricePerUnit || 0)
+          },
+        include:{
+          medicine:true
         }
-      });
-    }
+        });
 
-    const updatedStock = await prisma.stock.update({
-      where: { medicineId: parseInt(medicineId) },
-      data: { 
-        quantity: newQuantity,
-        pricePerUnit: pricePerUnit !== undefined ? new Prisma.Decimal(pricePerUnit) : undefined
-      },
-      include: {
-        medicine: {
-          include: {
-            manufacturer: true,
-            unit: true,
-            category: true,
+        // Create transaction record
+        const lastTransaction = await tx.transaction.findFirst({
+          where: { type: 'PURCHASE' },
+          orderBy: { id: 'desc' }
+        });
+        const nextId = (lastTransaction?.id || 0) + 1;
+        const referenceNumber = `PURCHASE-${nextId}`;
+        const totalAmount = Number(quantity) * Number(pricePerUnit || 0);
+
+        await tx.transaction.create({
+          data: {
+            referenceNumber,
+            type: 'PURCHASE',
+            amount: totalAmount,
+            userId,
+            note: `Purchase of ${purchase.medicine.name} x ${quantity}`,
+            purchaseId: purchase.id
+          }
+        });
+      }
+
+      const updatedStock = await tx.stock.update({
+        where: { medicineId: parseInt(medicineId) },
+        data: { 
+          quantity: newQuantity,
+          pricePerUnit: pricePerUnit !== undefined ? new Prisma.Decimal(pricePerUnit) : undefined
+        },
+        include: {
+          medicine: {
+            include: {
+              manufacturer: true,
+              unit: true,
+              category: true,
+            },
           },
         },
-      },
+      });
+
+      return { stock: updatedStock, purchase };
     });
 
     res.status(200).json({ 
       success: true,
       message: 'Stock adjusted successfully', 
-      data: updatedStock 
+      data: result 
     });
   } catch (error) {
     console.error('Adjust stock error:', error);
@@ -273,9 +302,8 @@ export const getStockUpdateTemplate = async (req: Request, res: Response) => {
 
 export const bulkUpdateStock = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const batchId  = req.body.batchId;
+    const batchId = req.body.batchId;
     const userId = req.user?.id;
-
 
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -292,86 +320,105 @@ export const bulkUpdateStock = async (req: AuthenticatedRequest, res: Response) 
     const updates = [];
     const errors = [];
 
-    // Skip header row
-    for (let i = 2; i <= worksheet.rowCount; i++) {
-      const row = worksheet.getRow(i);
-      const medicineValue = row.getCell(1).value;
-      const quantity = row.getCell(2).value;
-      const costPerUnit = row.getCell(3).value;
+    // Start a transaction for all updates
+    await prisma.$transaction(async (tx) => {
+      // Skip header row
+      for (let i = 2; i <= worksheet.rowCount; i++) {
+        const row = worksheet.getRow(i);
+        const medicineValue = row.getCell(1).value;
+        const quantity = row.getCell(2).value;
+        const costPerUnit = row.getCell(3).value;
 
-      console.log('Processing row:', { medicineValue, quantity, costPerUnit });
+        console.log('Processing row:', { medicineValue, quantity, costPerUnit });
 
-      if (!medicineValue || !quantity || !costPerUnit) {
-        errors.push(`Row ${i}: Missing required fields`);
-        continue;
-      }
-
-      try {
-        // Extract medicine ID from the format "1 - Paracetamol (PharmaCo)"
-        const match = String(medicineValue).match(/^(\d+)/);
-        if (!match) {
-          errors.push(`Row ${i}: Invalid medicine format - expected format: "1 - Medicine Name (Manufacturer)"`);
+        if (!medicineValue || !quantity || !costPerUnit) {
+          errors.push(`Row ${i}: Missing required fields`);
           continue;
         }
-        const medicineId = parseInt(match[1]);
 
-        // Create a new batch for this bulk update
-        // const batch = await prisma.batch.create({
-        //   data: {
-        //     purchaseDate: new Date(),
-        //   },
-        // });
+        try {
+          // Extract medicine ID from the format "1 - Paracetamol (PharmaCo)"
+          const match = String(medicineValue).match(/^(\d+)/);
+          if (!match) {
+            errors.push(`Row ${i}: Invalid medicine format - expected format: "1 - Medicine Name (Manufacturer)"`);
+            continue;
+          }
+          const medicineId = parseInt(match[1]);
 
-        // Create purchase record if quantity is positive
-        if (Number(quantity) > 0) {
-          await prisma.purchase.create({
-            data: {
-              medicine: {
-                connect: {
-                  id: medicineId
-                }
+          // Create purchase record if quantity is positive
+          if (Number(quantity) > 0) {
+            const purchase = await tx.purchase.create({
+              data: {
+                medicine: {
+                  connect: {
+                    id: medicineId
+                  }
+                },
+                batch: {
+                  connect: {
+                    id: +batchId
+                  }
+                },
+                user: {
+                  connect: {
+                    id: userId
+                  }
+                },
+                quantity: Number(quantity),
+                costPerUnit: new Prisma.Decimal(Number(costPerUnit)),
               },
-              batch: {
-                connect: {
-                  id: +batchId
-                }
-              },
-              user: {
-                connect: {
-                  id: userId
-                }
-              },
-              quantity: Number(quantity),
-              costPerUnit: new Prisma.Decimal(Number(costPerUnit)),
-            } as any, // Type assertion to bypass type checking
-          });
-        }
+              include:{
+                medicine:true
+              }
+            });
 
-        // Update or create stock
-        const stock = await prisma.stock.upsert({
-          where: { medicineId },
-          update: {
-            quantity: {
-              increment: Number(quantity),
+            // Create transaction record
+            const lastTransaction = await tx.transaction.findFirst({
+              where: { type: 'PURCHASE' },
+              orderBy: { id: 'desc' }
+            });
+            const nextId = (lastTransaction?.id || 0) + 1;
+            const referenceNumber = `PURCHASE-${nextId}`;
+            const totalAmount = Number(quantity) * Number(costPerUnit);
+
+            await tx.transaction.create({
+              data: {
+                referenceNumber,
+                type: 'PURCHASE',
+                amount: totalAmount,
+                userId,
+                note: `Purchase of ${purchase.medicine.name} x ${quantity}`,
+                purchaseId: purchase.id
+              }
+            });
+          }
+
+          // Update or create stock
+          const stock = await tx.stock.upsert({
+            where: { medicineId },
+            update: {
+              quantity: {
+                increment: Number(quantity),
+              },
             },
-          },
-          create: {
-            medicineId,
-            quantity: Number(quantity),
-          },
-        });
+            create: {
+              medicineId,
+              quantity: Number(quantity),
+            },
+          });
 
-        updates.push({
-          medicineId,
-          quantity,
-          costPerUnit,
-          newTotal: stock.quantity,
-        });
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        errors.push(`Row ${i}: ${errorMessage}`);
+          updates.push({
+            medicineId,
+            quantity,
+            costPerUnit,
+            newTotal: stock.quantity,
+          });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          errors.push(`Row ${i}: ${errorMessage}`);
+        }
       }
-    }
+    });
 
     if (errors.length > 0) {
       return res.status(400).json({

@@ -90,6 +90,25 @@ export const createSell = async (req: AuthenticatedRequest, res: Response) => {
         }
       });
 
+      // Create transaction record
+      const lastTransaction = await tx.transaction.findFirst({
+        where: { type: 'SALE' },
+        orderBy: { id: 'desc' }
+      });
+      const nextId = (lastTransaction?.id || 0) + 1;
+      const referenceNumber = `SALE-${nextId}`;
+
+      await tx.transaction.create({
+        data: {
+          referenceNumber,
+          type: 'SALE',
+          amount: Number(totalPrice),
+          userId,
+          note: `Sale of ${medicine.name} x ${quantity}`,
+          sellId: sell.id
+        }
+      });
+
       return sell;
     });
 

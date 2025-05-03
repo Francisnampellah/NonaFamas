@@ -12,6 +12,13 @@ enum UserRole {
   PHARMACIST
 }
 
+enum TransactionType {
+  EXPENSE
+  SALE
+  FINANCE
+  PURCHASE
+}
+
 model User {
   id         Int          @id @default(autoincrement())
   name       String
@@ -20,6 +27,7 @@ model User {
   role       UserRole     @default(PHARMACIST)
   purchases  Purchase[]   
   sells      Sell[]
+  transactions Transaction[]
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
@@ -89,19 +97,6 @@ model Medicine {
   @@index([categoryId])
 }
 
-model Purchase {
-  id            Int         @id @default(autoincrement())
-  medicineId    Int
-  batchId       Int
-  userId        Int
-  quantity      Int
-  costPerUnit   Decimal     @db.Decimal(10,2)
-  medicine      Medicine    @relation(fields: [medicineId], references: [id], onDelete: Restrict)
-  batch         Batch       @relation(fields: [batchId], references: [id], onDelete: Restrict)
-  user          User        @relation(fields: [userId], references: [id], onDelete: Restrict)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-} 
 
 model Stock {
   id           Int        @id @default(autoincrement())
@@ -113,12 +108,34 @@ model Stock {
   updatedAt    DateTime   @updatedAt
 }
 
+
+model Transaction {
+  id              Int              @id @default(autoincrement())
+  referenceNumber String           @unique
+  type            TransactionType
+  amount          Int
+  userId          Int
+  note            String?
+  taxApplied      Float?           // Percentage (e.g., 5.5 = 5.5%)
+  sellId          Int?             @unique
+  purchaseId      Int?             @unique
+  user            User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  sell            Sell?            @relation("SellTransaction", fields: [sellId], references: [id])
+  purchase        Purchase?        @relation("PurchaseTransaction", fields: [purchaseId], references: [id])
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([type])
+  @@index([userId])
+}
+
 model Sell {
   id           Int        @id @default(autoincrement())
   medicineId   Int
   userId       Int
   quantity     Int
   totalPrice   Decimal    @db.Decimal(10,2)
+  transaction  Transaction? @relation("SellTransaction")
   medicine     Medicine   @relation(fields: [medicineId], references: [id], onDelete: Restrict)
   user         User       @relation(fields: [userId], references: [id], onDelete: Restrict)
   createdAt    DateTime   @default(now())
@@ -127,3 +144,19 @@ model Sell {
   @@index([medicineId])
   @@index([userId])
 }
+
+model Purchase {
+  id            Int         @id @default(autoincrement())
+  medicineId    Int
+  batchId       Int
+  userId        Int
+  quantity      Int
+  costPerUnit   Decimal     @db.Decimal(10,2)
+  transaction   Transaction? @relation("PurchaseTransaction")
+  medicine      Medicine    @relation(fields: [medicineId], references: [id], onDelete: Restrict)
+  batch         Batch       @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+

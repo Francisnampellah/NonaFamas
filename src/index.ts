@@ -15,6 +15,7 @@ import excelRoutes from './routes/excelMedicineRoutes.js';
 import excelStockRoutes from './routes/excelStockRoute.js';
 import batchRoutes from './routes/batch.routes.js';
 import userRoutes from "./routes/userRoutes.js"
+import transactionRoute from "./routes/transaction.routes.js"
 dotenv.config();
 
 const app = express();
@@ -45,6 +46,7 @@ app.use('/api/excel', excelRoutes);
 app.use('/api/excel-stock', excelStockRoutes);
 app.use('/api/batch', batchRoutes);
 app.use("/api/users",userRoutes)
+app.use("/api/transactions",transactionRoute)
 // Basic health check route
 app.get('/health', (req:any, res:any) => {
   res.json({ status: 'ok' });
