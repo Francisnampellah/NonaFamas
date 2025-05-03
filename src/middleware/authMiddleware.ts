@@ -1,5 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 interface TokenPayload {
   id: string;
@@ -23,6 +26,15 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
   }
 
   try {
+    // Check if token is blacklisted
+    const blacklistedToken = await prisma.blacklistedToken.findUnique({
+      where: { token }
+    });
+
+    if (blacklistedToken) {
+      return res.status(401).json({ message: 'Token has been invalidated' });
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
     req.user = decoded;
     next();

@@ -16,6 +16,8 @@ import excelStockRoutes from './routes/excelStockRoute.js';
 import batchRoutes from './routes/batch.routes.js';
 import userRoutes from "./routes/userRoutes.js"
 import transactionRoute from "./routes/transaction.routes.js"
+import { cleanupExpiredTokens } from './utils/tokenCleanup.js';
+
 dotenv.config();
 
 const app = express();
@@ -47,10 +49,14 @@ app.use('/api/excel-stock', excelStockRoutes);
 app.use('/api/batch', batchRoutes);
 app.use("/api/users",userRoutes)
 app.use("/api/transactions",transactionRoute)
+
 // Basic health check route
 app.get('/health', (req:any, res:any) => {
   res.json({ status: 'ok' });
 });
+
+// Run token cleanup every 24 hours
+setInterval(cleanupExpiredTokens, 24 * 60 * 60 * 1000);
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

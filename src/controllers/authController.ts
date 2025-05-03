@@ -70,7 +70,18 @@ export const login = async (req: Request, res: Response) => {
 
 export const logout = async (req: Request, res: Response) => {
   try {
-    // Invalidate the token on the client side by clearing it
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (token) {
+      // Add token to blacklist
+      await prisma.blacklistedToken.create({
+        data: {
+          token,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
+        }
+      });
+    }
+
     res.status(200).json({ message: 'Logout successful' });
   } catch (error) {
     console.error('Error during logout:', error);

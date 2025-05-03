@@ -56,7 +56,7 @@ export const createSell = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     // Calculate total price
-    const totalPrice = medicine.sellPrice.mul(quantity);
+    const totalPrice = price ? price : medicine.sellPrice.mul(quantity);
 
     // Start a transaction to ensure data consistency
     const result = await prisma.$transaction(async (tx) => {
