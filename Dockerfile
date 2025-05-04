@@ -1,19 +1,26 @@
-FROM node:18-alpine AS base
+# Use Node.js LTS version
+FROM node:20-alpine
 
-# Install system dependencies
-RUN apk add --no-cache build-base python3
+# Create app directory
+WORKDIR /usr/src/app
 
-WORKDIR /app
+# Copy package files
+COPY package*.json ./
 
 # Install dependencies
-COPY package*.json ./
-COPY prisma ./prisma/
 RUN npm install
 
-# Build application
+# Copy source code
 COPY . .
+
+# Generate Prisma client
 RUN npx prisma generate
 
+# Build TypeScript
+RUN npm run build
+
+# Expose port
 EXPOSE 3000
 
-CMD ["npm", "start"]
+# Start the application
+CMD ["npm", "start"] 
