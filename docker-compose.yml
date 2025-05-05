@@ -1,8 +1,15 @@
 version: '3.8'
 
 services:
-  app:
+  famasi:
     build: .
+    container_name: famasi-container
+    restart: always
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    networks:
+      - proxy
     ports:
       - "3000:3000"
     environment:
@@ -10,10 +17,7 @@ services:
       - NODE_ENV=development
     depends_on:
       - db
-    volumes:
-      - .:/usr/src/app
-      - /usr/src/app/node_modules
-    command: npm run dev
+    
 
   db:
     image: postgres:15-alpine
@@ -28,3 +32,8 @@ services:
 
 volumes:
   postgres_data:
+
+networks:
+  proxy:
+    external: true
+      
