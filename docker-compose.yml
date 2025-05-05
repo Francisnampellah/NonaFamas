@@ -30,7 +30,7 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=famasi_db
     ports:
-      - '3306:3306'
+      - '5432:5432'
     volumes:
       - ./database:/var/lib/postgresql/data
 
@@ -44,7 +44,7 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/famasi_db
       - NODE_ENV=development
     ports:
-      - 3334:3334
+      - 3000:3000
     depends_on:
       - database
     networks:
@@ -58,7 +58,7 @@ services:
       - 'traefik.http.routers.famasi.entrypoints=websecure'
       - 'traefik.http.routers.famasi.tls.certresolver=letsencrypt'
       - 'traefik.http.routers.famasi.service=famasi'
-      - 'traefik.http.services.famasi.loadbalancer.server.port=3334'
+      - 'traefik.http.services.famasi.loadbalancer.server.port=3000'
 
 networks:
   proxy:
