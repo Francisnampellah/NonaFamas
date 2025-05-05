@@ -4,17 +4,17 @@ import ExcelJS from 'exceljs';
 
 // Add type for file upload
 interface MulterRequest extends Request {
-  file?: {
+  file?: Express.Multer.File & {
     buffer: Buffer;
-    originalname: string;
-    mimetype: string;
-    size: number;
   };
 }
 
 // Add type for authenticated request
 interface AuthenticatedRequest extends MulterRequest {
   userId: number;
+  user?: {
+    id: number;
+  };
 }
 
 const prisma = new PrismaClient();
@@ -92,7 +92,7 @@ export const updateStock = async (req: Request, res: Response) => {
     const stock = await prisma.stock.upsert({
       where: { medicineId: parseInt(medicineId) },
       update: { 
-        quantity,
+        quantity: Number(quantity),
         pricePerUnit: pricePerUnit !== undefined ? pricePerUnit : undefined
       },
       create: {
@@ -129,8 +129,8 @@ export const updateStock = async (req: Request, res: Response) => {
 export const adjustStock = async (req: AuthenticatedRequest, res: Response) => {
   const { medicineId } = req.params;
   const { quantity, pricePerUnit, batchId } = req.body;
-  const userId = req.user?.id;
 
+  const userId = req.user?.id;
   if (!userId) {
     return res.status(401).json({ 
       success: false,
@@ -201,7 +201,7 @@ export const adjustStock = async (req: AuthenticatedRequest, res: Response) => {
             referenceNumber,
             type: 'PURCHASE',
             amount: totalAmount,
-            userId,
+            userId: userId!, // Non-null assertion to ensure userId is not undefined
             note: `Purchase of ${purchase.medicine.name} x ${quantity}`,
             purchaseId: purchase.id
           }
@@ -303,7 +303,14 @@ export const getStockUpdateTemplate = async (req: Request, res: Response) => {
 export const bulkUpdateStock = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const batchId = req.body.batchId;
+
     const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false,
+        error: 'User not authenticated' 
+      });
+    }
 
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -317,8 +324,15 @@ export const bulkUpdateStock = async (req: AuthenticatedRequest, res: Response) 
       return res.status(400).json({ error: 'Invalid Excel file format' });
     }
 
-    const updates = [];
-    const errors = [];
+    interface UpdateRecord {
+      medicineId: number;
+      quantity: number;
+      costPerUnit: number;
+      newTotal: number;
+    }
+
+    const updates: UpdateRecord[] = [];
+    const errors: string[] = [];
 
     // Start a transaction for all updates
     await prisma.$transaction(async (tx) => {
@@ -326,8 +340,8 @@ export const bulkUpdateStock = async (req: AuthenticatedRequest, res: Response) 
       for (let i = 2; i <= worksheet.rowCount; i++) {
         const row = worksheet.getRow(i);
         const medicineValue = row.getCell(1).value;
-        const quantity = row.getCell(2).value;
-        const costPerUnit = row.getCell(3).value;
+        const quantity = Number(row.getCell(2).value) || 0;
+        const costPerUnit = Number(row.getCell(3).value) || 0;
 
         console.log('Processing row:', { medicineValue, quantity, costPerUnit });
 
@@ -436,4 +450,4 @@ export const bulkUpdateStock = async (req: AuthenticatedRequest, res: Response) 
     console.error('Error in bulkUpdateStock:', error);
     res.status(500).json({ error: 'Failed to update stock' });
   }
-}; 
+};

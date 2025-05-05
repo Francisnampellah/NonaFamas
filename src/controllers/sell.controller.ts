@@ -140,7 +140,7 @@ export const getSells = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     // Build filter conditions
-    const where: any = { userId };
+    const where: any = {  };
     
     if (startDate && endDate) {
       where.createdAt = {

@@ -6,7 +6,7 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "dev": "nodemon --exec tsx src/index.ts",
-    "build": "tsc",
+    "build": "tsc --noEmitOnError false",
     "test": "echo \"Error: no test specified\" && exit 1",
     "seed": "tsx prisma/seed.ts"
   },

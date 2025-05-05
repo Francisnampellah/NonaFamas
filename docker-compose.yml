@@ -6,7 +6,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/nonafamasi
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/famasi_db
       - NODE_ENV=development
     depends_on:
       - db
@@ -22,7 +22,7 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=nonafamasi
+      - POSTGRES_DB=famasi_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
