@@ -1,39 +1,110 @@
-version: '3.8'
-
 services:
-  famasi:
-    build: .
-    container_name: famasi-container
-    restart: always
-    volumes:
-      - .:/usr/src/app
-      - /usr/src/app/node_modules
+  traefik:
+    image: traefik:2.8
+    container_name: traefik
+    restart: unless-stopped
     networks:
       - proxy
     ports:
-      - "3000:3000"
-    environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/famasi_db
-      - NODE_ENV=development
-    depends_on:
-      - db
-    
+      - '80:80'
+      - '443:443'
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'
+      - './traefik.yml:/traefik.yml:ro'
+      - './acme.json:/acme.json'
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.port=80'
+      - 'traefik.docker.network=proxy'
+      - 'traefik.http.routers.traefik.service=traefik'
+      - 'traefik.http.routers.traefik.service=api@internal'
 
-  db:
+  database:
     image: postgres:15-alpine
-    ports:
-      - "5433:5432"
+    container_name: database
+    restart: unless-stopped
+    networks:
+      - proxy
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=famasi_db
+    ports:
+      - '3306:3306'
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./database:/var/lib/postgresql/data
 
-volumes:
-  postgres_data:
+  famasi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: famasi
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/famasi_db
+      - NODE_ENV=development
+    ports:
+      - 3334:3334
+    depends_on:
+      - database
+    networks:
+      - proxy
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=proxy'
+      - 'traefik.port=80'
+      - 'traefik.http.routers.famasi.tls=true'
+      - 'traefik.http.routers.famasi.rule=Host(`famasi.tradesync.software`)'
+      - 'traefik.http.routers.famasi.entrypoints=websecure'
+      - 'traefik.http.routers.famasi.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.famasi.service=famasi'
+      - 'traefik.http.services.famasi.loadbalancer.server.port=3334'
 
 networks:
   proxy:
     external: true
+
+volumes:
+  famasiservicepg:
+
+
+
+# version: '3.8'
+
+# services:
+#   famasi:
+#     build: .
+#     container_name: famasi-container
+#     restart: always
+#     volumes:
+#       - .:/usr/src/app
+#       - /usr/src/app/node_modules
+#     networks:
+#       - proxy
+#     ports:
+#       - "3000:3000"
+#     environment:
+#       - DATABASE_URL=postgresql://postgres:postgres@db:5432/famasi_db
+#       - NODE_ENV=development
+#     depends_on:
+#       - db
+    
+
+#   db:
+#     image: postgres:15-alpine
+#     ports:
+#       - "5433:5432"
+#     environment:
+#       - POSTGRES_USER=postgres
+#       - POSTGRES_PASSWORD=postgres
+#       - POSTGRES_DB=famasi_db
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+
+# volumes:
+#   postgres_data:
+
+# networks:
+#   proxy:
+#     external: true
       
