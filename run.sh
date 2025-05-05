@@ -26,6 +26,10 @@ sudo systemctl start docker
 docker --version
 docker-compose --version
 
+docker network create proxy
+
+touch acme.json && chmod 600 acme.json
+
 # Run Docker Compose if docker-compose.yml exists
 if [ -f "docker-compose.yml" ]; then
   sudo docker-compose up -d
