@@ -35,3 +35,45 @@ EXPOSE 3000
 CMD ["sh", "-c", "./start.sh"]
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD curl -f http://0.0.0.0:3000/health || exit 1
+
+
+# FROM node:lts AS build
+
+# RUN apt-get update -y
+# RUN apt-get install -y openssl
+
+# WORKDIR /usr/src/app
+
+# COPY package*.json ./
+
+# RUN npm ci
+
+# COPY . .
+
+# RUN npx prisma generate
+
+# RUN npm run build
+
+# FROM node:lts-slim AS production
+
+# RUN apt-get update -y
+# RUN apt-get install -y openssl
+
+# COPY --from=build /usr/src/app/package*.json ./
+# COPY --from=build /usr/src/app/dist ./dist/
+# COPY --from=build /usr/src/app/prisma ./prisma/
+
+# RUN npm ci --omit=dev
+
+# RUN npx prisma generate
+
+# ARG NODE_ENV=production
+# ENV NODE_ENV=${NODE_ENV}
+
+# EXPOSE ${PORT}
+
+# COPY ./entrypoint.sh /usr/src/app/
+
+# RUN chmod +x /usr/src/app/entrypoint.sh
+
+# ENTRYPOINT ["/usr/src/app/entrypoint.sh"]
