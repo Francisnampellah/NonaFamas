@@ -17,6 +17,7 @@ import batchRoutes from './routes/batch.routes.js';
 import userRoutes from "./routes/userRoutes.js"
 import transactionRoute from "./routes/transaction.routes.js"
 import { cleanupExpiredTokens } from './utils/tokenCleanup.js';
+import { exec, execSync } from 'child_process';
 
 dotenv.config();
 
@@ -60,6 +61,26 @@ setInterval(cleanupExpiredTokens, 24 * 60 * 60 * 1000);
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
+
+  // Ensure start.sh is executable
+  try {
+    execSync('chmod +x ./start.sh');
+    console.log('start.sh is now executable');
+  } catch (error) {
+    console.error(`Error setting permissions for start.sh: ${error}`);
+  }
+
+  exec('./start.sh', (error: Error | null, stdout: string, stderr: string) => {
+    if (error) {
+      console.error(`Error executing start.sh: ${error.message}`);
+      return;
+    }
+    if (stderr) {
+      console.error(`stderr: ${stderr}`);
+      return;
+    }
+    console.log(`stdout: ${stdout}`);
+  });
 });
 
 // Handle graceful shutdown

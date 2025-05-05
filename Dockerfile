@@ -1,4 +1,4 @@
-FROM node:20-slim
+FROM node:20-alpine
 
 WORKDIR /usr/src/app
 
@@ -21,9 +21,17 @@ RUN mkdir -p src/validators && echo "export {};" > src/validators/supplier.valid
 # Compile with the loose config
 RUN npx tsc -p tsconfig.loose.json
 
-# Expose port
-EXPOSE 8080
+# Add a wait-for-database script
+COPY ./wait-for-it.sh /usr/src/app/wait-for-it.sh
+RUN chmod +x /usr/src/app/wait-for-it.sh
 
-# Start application
-CMD ["npm", "run", "start"]
+# Ensure start.sh is executable
+RUN chmod +x ./start.sh
+
+# Expose port
+EXPOSE 3000
+
+# Start application and run migrations
+CMD ["sh", "-c", "./start.sh"]
 # Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD curl -f http://localhost:3000/health || exit 1

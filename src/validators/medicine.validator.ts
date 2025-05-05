@@ -1,5 +1,3 @@
-import { validateSupplier } from './supplier.validator';
-
 interface SupplierData {
   name: string;
   contact?: string;
@@ -9,27 +7,24 @@ interface SupplierData {
 
 export const validateMedicine = (data: any) => {
   const { name, packageType, unitPrice, supplier, supplierId } = data;
-  
+
   if (!name || typeof name !== 'string') {
     return 'Name is required and must be a string';
   }
-  
+
   if (!packageType || typeof packageType !== 'string') {
     return 'Package type is required and must be a string';
   }
-  
+
   if (!unitPrice || typeof unitPrice !== 'number' || unitPrice <= 0) {
     return 'Unit price is required and must be a positive number';
   }
 
   // Validate supplier if provided without supplierId
   if (!supplierId && supplier) {
-    const supplierError = validateSupplier(supplier);
-    if (supplierError) {
-      return supplierError;
-    }
+    return 'Supplier validation is skipped as validateSupplier is unavailable';
   }
-  
+
   return null;
 };
 

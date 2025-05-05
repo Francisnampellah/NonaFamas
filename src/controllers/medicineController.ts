@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import ExcelJS from 'exceljs';
+import { Readable } from 'stream';
 
 // Add type for file upload
 interface MulterRequest extends Request {
@@ -9,6 +10,12 @@ interface MulterRequest extends Request {
     originalname: string;
     mimetype: string;
     size: number;
+    fieldname: string;
+    encoding: string;
+    stream: Readable;
+    destination: string;
+    filename: string;
+    path: string;
   };
 }
 
