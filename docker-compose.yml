@@ -120,6 +120,10 @@ services:
 
   db:
     image: postgres:15-alpine
+    container_name: famasi-db
+    restart: unless-stopped
+    networks:
+      - proxy
     ports:
       - "5433:5432"
     environment:
@@ -128,6 +132,12 @@ services:
       - POSTGRES_DB=famasi_db
     volumes:
       - postgres_data:/var/lib/postgresql/data  # Consider switching to RDS or EFS for production
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
 
 volumes:
   postgres_data:
