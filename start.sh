@@ -1,5 +1,4 @@
-create file like this #!/bin/sh
-
+#!/bin/sh
 if [ -f .env ]; then
 export $(grep -v '^#' .env | xargs)
 fi
