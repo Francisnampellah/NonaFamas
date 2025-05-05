@@ -89,6 +89,10 @@ services:
       - 'traefik.docker.network=proxy'
       - 'traefik.http.routers.traefik.service=traefik'
       - 'traefik.http.routers.traefik.service=api@internal'
+      - 'traefik.http.routers.traefik.rule=Host(`traefik.tradesync.software`)'
+      - 'traefik.http.routers.traefik.entrypoints=websecure'
+      - 'traefik.http.routers.traefik.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.traefik.tls=true'
 
   famasi:
     image: nonafamasi
@@ -112,13 +116,15 @@ services:
       - 'traefik.docker.network=proxy'
       - 'traefik.port=3000'
       - 'traefik.http.routers.famasi.tls=true'
-      - 'traefik.http.routers.famasi.rule=Host(`famasi.tradesync.software`)'
-      - 'traefik.http.routers.famasi.entrypoints=web'
+      - 'traefik.http.routers.famasi-http.rule=Host(`famasi.tradesync.software`)'
+      - 'traefik.http.routers.famasi-http.entrypoints=web'
       - 'traefik.http.routers.famasi.tls.certresolver=letsencrypt'
-      - 'traefik.http.routers.famasi.service=famasi'
-      - 'traefik.http.services.famasi.loadbalancer.server.port=3000
+      - 'traefik.http.routers.famasi.rule=Host(`famasi.tradesync.software`)'
+      - 'traefik.http.routers.famasi.entrypoints=websecure'
+      - 'traefik.http.services.famasi.loadbalancer.server.port=3000'
+      - 'traefik.http.services.famasi-http.loadbalancer.server.port=3000'  # Added load balancer for famasi-http
 
-
+      
   db:
     image: postgres:15-alpine
     container_name: famasi-db

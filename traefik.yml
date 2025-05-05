@@ -1,4 +1,8 @@
 # Basic traefik.yml example
+
+api:
+  dashboard: true
+
 entryPoints:
   web:
     address: ":80"
