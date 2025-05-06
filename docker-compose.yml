@@ -23,6 +23,8 @@ services:
       - 'traefik.http.routers.traefik.tls=true'
       - 'traefik.http.routers.traefik.tls.certresolver=letsencrypt'
       - 'traefik.http.routers.traefik.service=api@internal'
+      - 'traefik.http.routers.traefik.middlewares=auth'
+      - 'traefik.http.middlewares.auth.basicauth.users=admin:$apr1$xyz$abcdefghijklmnopqrstuv'  # Replace with real hashed password
 
   famasi:
     image: nonafamasi
@@ -34,10 +36,11 @@ services:
       - /usr/src/app/node_modules
     networks:
       - proxy
-    ports:
-      - "3000:3000"  # 👈 Expose port 3000 on host for direct access
+    # Optional: Comment out to remove direct access
+    # ports:
+    #   - "3000:3000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/famasi_db
+      - DATABASE_URL=${DATABASE_URL}
       - NODE_ENV=development
     depends_on:
       - db
@@ -59,9 +62,9 @@ services:
     ports:
       - "5433:5432"
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=famasi_db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
