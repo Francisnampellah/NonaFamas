@@ -1,2 +1,0 @@
-apt install apache2-utils  # or `brew install httpd` on macOS
-htpasswd -nb admin apr1$xyz$abcdefghijklmnopqrstu
