@@ -17,6 +17,8 @@ services:
       - './acme.json:/acme.json'
     labels:
       - 'traefik.enable=true'
+      - 'traefik.port=80'
+      - 'traefik.http.routers.traefik.service=traefik'
       - 'traefik.docker.network=proxy'
       - 'traefik.http.routers.traefik.rule=Host(`traefik.bluetech.software`)'
       - 'traefik.http.routers.traefik.entrypoints=websecure'
@@ -24,6 +26,23 @@ services:
       - 'traefik.http.routers.traefik.tls.certresolver=letsencrypt'
       - 'traefik.http.routers.traefik.service=api@internal'
       - 'traefik.http.services.famasi.loadbalancer.server.port=3000'
+
+
+#       - 'traefik.port=80'
+#       - 'traefik.http.routers.traefik.service=traefik'
+
+
+      #       - 'traefik.enable=true'
+#       - 'traefik.docker.network=proxy'
+#       - 'traefik.port=3000'
+#       - 'traefik.http.routers.famasi.tls=true'
+#       - 'traefik.http.routers.famasi-http.rule=Host(`famasi.tradesync.software`)'
+#       - 'traefik.http.routers.famasi-http.entrypoints=web'
+#       - 'traefik.http.routers.famasi.tls.certresolver=letsencrypt'
+#       - 'traefik.http.routers.famasi.rule=Host(`famasi.tradesync.software`)'
+#       - 'traefik.http.routers.famasi.entrypoints=websecure'
+#       - 'traefik.http.services.famasi.loadbalancer.server.port=3000'
+#       - 'traefik.http.services.famasi-http.loadbalancer.server.port=3000'  
 
       # - 'traefik.http.routers.traefik.middlewares=auth'
       # - 'traefik.http.middlewares.auth.basicauth.users=admin:$apr1$xyz$abcdefghijklmnopqrstuv'  # Replace with real hashed password
@@ -39,8 +58,8 @@ services:
     networks:
       - proxy
     # Optional: Comment out to remove direct access
-    # ports:
-    #   - "3000:3000"
+    ports:
+      - "3000"
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - NODE_ENV=development
@@ -54,6 +73,11 @@ services:
       - 'traefik.http.routers.famasi.tls=true'
       - 'traefik.http.routers.famasi.tls.certresolver=letsencrypt'
       - 'traefik.http.services.famasi.loadbalancer.server.port=3000'
+
+
+#       - 'traefik.port=3000'
+#       - 'traefik.http.services.famasi.loadbalancer.server.port=3000'
+#       - 'traefik.http.services.famasi-http.loadbalancer.server.port=3000'
 
   db:
     image: postgres:15-alpine
@@ -140,7 +164,17 @@ networks:
 #       - 3334:3334
 #     depends_on:
 #       - database
-#     networks:
+#     networks:#       - 'traefik.enable=true'
+#       - 'traefik.docker.network=proxy'
+#       - 'traefik.port=3000'
+#       - 'traefik.http.routers.famasi.tls=true'
+#       - 'traefik.http.routers.famasi-http.rule=Host(`famasi.tradesync.software`)'
+#       - 'traefik.http.routers.famasi-http.entrypoints=web'
+#       - 'traefik.http.routers.famasi.tls.certresolver=letsencrypt'
+#       - 'traefik.http.routers.famasi.rule=Host(`famasi.tradesync.software`)'
+#       - 'traefik.http.routers.famasi.entrypoints=websecure'
+#       - 'traefik.http.services.famasi.loadbalancer.server.port=3000'
+#       - 'traefik.http.services.famasi-http.loadbalancer.server.port=3000'
 #       - proxy
 #     labels:
 #       - 'traefik.enable=true'
