@@ -34,8 +34,8 @@ services:
       - /usr/src/app/node_modules
     networks:
       - proxy
-    expose:
-      - "3000"  # Use expose instead of ports when using Traefik
+    ports:
+      - "3000:3000"  # 👈 Expose port 3000 on host for direct access
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/famasi_db
       - NODE_ENV=development
