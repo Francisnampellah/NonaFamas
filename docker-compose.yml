@@ -23,7 +23,7 @@ services:
       - 'traefik.http.routers.traefik.tls=true'
       - 'traefik.http.routers.traefik.tls.certresolver=letsencrypt'
       - 'traefik.http.routers.traefik.service=api@internal'
-      - 'traefik.http.routers.traefik.middlewares=auth'
+      # - 'traefik.http.routers.traefik.middlewares=auth'
       # - 'traefik.http.middlewares.auth.basicauth.users=admin:$apr1$xyz$abcdefghijklmnopqrstuv'  # Replace with real hashed password
 
   famasi:
