@@ -18,7 +18,7 @@ services:
     labels:
       - 'traefik.enable=true'
       - 'traefik.docker.network=proxy'
-      - 'traefik.http.routers.traefik.rule=Host(`traefik.tradesync.software`)'
+      - 'traefik.http.routers.traefik.rule=Host(`traefik.bluetech.software`)'
       - 'traefik.http.routers.traefik.entrypoints=websecure'
       - 'traefik.http.routers.traefik.tls=true'
       - 'traefik.http.routers.traefik.tls.certresolver=letsencrypt'
@@ -44,7 +44,7 @@ services:
     labels:
       - 'traefik.enable=true'
       - 'traefik.docker.network=proxy'
-      - 'traefik.http.routers.famasi.rule=Host(`famasi.tradesync.software`)'
+      - 'traefik.http.routers.famasi.rule=Host(`nonasfamasi.bluetech.software`)'
       - 'traefik.http.routers.famasi.entrypoints=websecure'
       - 'traefik.http.routers.famasi.tls=true'
       - 'traefik.http.routers.famasi.tls.certresolver=letsencrypt'
