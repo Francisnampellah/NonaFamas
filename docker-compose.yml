@@ -47,8 +47,7 @@ services:
       - 'traefik.http.routers.famasi.tls=true'
       - 'traefik.http.routers.famasi.tls.certresolver=letsencrypt'
       - 'traefik.http.services.famasi.loadbalancer.server.port=3000'
-      - 'traefik.http.middlewares.famasi-stripprefix.stripprefix.prefixes=/health'
-      - 'traefik.http.routers.famasi.middlewares=famasi-stripprefix'
+
 
   db:
     image: postgres:15-alpine
