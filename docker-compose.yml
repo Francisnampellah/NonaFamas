@@ -1,38 +1,55 @@
 version: '3.8'
 
 services:
-
-  nginx:
-    image: nginx:alpine
-    container_name: nginx
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
     restart: unless-stopped
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - proxy
     ports:
       - '80:80'
       - '443:443'
-    depends_on:
-      - famasi
-    networks:
-      - proxy
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'
+      - './traefik.yml:/etc/traefik/traefik.yml:ro'
+      - './acme.json:/acme.json'
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=proxy'
+      # Dashboard configuration
+      - 'traefik.http.routers.traefik.rule=Host(`traefik.bluetech.software`)'
+      - 'traefik.http.routers.traefik.service=api@internal'
+      - 'traefik.http.routers.traefik.entrypoints=websecure'
+      - 'traefik.http.routers.traefik.tls=true'
+      - 'traefik.http.routers.traefik.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.traefik.middlewares=auth'
+      # Basic auth middleware
+      - 'traefik.http.middlewares.auth.basicauth.users=admin:$$apr1$$xyz123' # Replace with your hashed password
 
   famasi:
-    image: nonafamasi
-    build: .
-    container_name: famasi-container
-    restart: always
-    volumes:
-      - .:/usr/src/app
-      - /usr/src/app/node_modules
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: famasi
+    restart: unless-stopped
     networks:
       - proxy
-    expose:
-      - "3000"
     environment:
       - DATABASE_URL=${DATABASE_URL}
-      - NODE_ENV=development
+      - NODE_ENV=production
     depends_on:
       - db
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=proxy'
+      - 'traefik.http.routers.famasi.rule=Host(`nonas.bluetech.software`)'
+      - 'traefik.http.routers.famasi.entrypoints=websecure'
+      - 'traefik.http.routers.famasi.tls=true'
+      - 'traefik.http.routers.famasi.tls.certresolver=letsencrypt'
+      - 'traefik.http.services.famasi.loadbalancer.server.port=3000'
 
   db:
     image: postgres:15-alpine
@@ -40,12 +57,10 @@ services:
     restart: unless-stopped
     networks:
       - proxy
-    ports:
-      - "5433:5432"
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=famasi_db
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-famasi_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -55,274 +70,12 @@ services:
       retries: 5
       start_period: 10s
 
-volumes:
-  postgres_data:
-
 networks:
   proxy:
     external: true
 
-
-
-
-
-
-
-
-
-# services:
-
-#   traefik:
-#     image: traefik:2.8
-#     container_name: traefik
-#     restart: unless-stopped
-#     networks:
-#       - proxy
-#     ports:
-#       - '80:80'
-#       - '443:443'
-#     volumes:
-#       - '/var/run/docker.sock:/var/run/docker.sock:ro'
-#       - './traefik.yml:/traefik.yml:ro'
-#       - './acme.json:/acme.json'
-#     labels:
-#       - 'traefik.enable=true'
-#       - 'traefik.docker.network=proxy'
-#       - 'traefik.http.routers.traefik.rule=Host(`traefik.bluetech.software`)'
-#       - 'traefik.http.routers.traefik.entrypoints=websecure'
-#       - 'traefik.http.routers.traefik.tls=true'
-#       - 'traefik.http.routers.traefik.tls.certresolver=letsencrypt'
-#       - 'traefik.http.routers.traefik.service=api@internal'
-
-#   famasi:
-#     image: nonafamasi
-#     build: .
-#     container_name: famasi-container
-#     restart: always
-#     volumes:
-#       - .:/usr/src/app
-#       - /usr/src/app/node_modules
-#     networks:
-#       - proxy
-#     ports:
-#       - "3000"
-#     environment:
-#       - DATABASE_URL=${DATABASE_URL}
-#       - NODE_ENV=development
-#     depends_on:
-#       - db
-#     labels:
-#       - 'traefik.enable=true'
-#       - 'traefik.docker.network=proxy'
-#       - 'traefik.http.routers.famasi.rule=Host(`nonasfamasi.bluetech.software`)'
-#       - 'traefik.http.routers.famasi.entrypoints=websecure'
-#       - 'traefik.http.routers.famasi.tls=true'
-#       - 'traefik.http.routers.famasi.tls.certresolver=letsencrypt'
-#       - 'traefik.http.services.famasi.loadbalancer.server.port=3000'
-
-
-#   db:
-#     image: postgres:15-alpine
-#     container_name: famasi-db
-#     restart: unless-stopped
-#     networks:
-#       - proxy
-#     ports:
-#       - "5433:5432"
-#     environment:
-#       - POSTGRES_USER=postgres
-#       - POSTGRES_PASSWORD=postgres
-#       - POSTGRES_DB=famasi_db
-#     volumes:
-#       - postgres_data:/var/lib/postgresql/data
-#     healthcheck:
-#       test: ["CMD-SHELL", "pg_isready -U postgres"]
-#       interval: 30s
-#       timeout: 10s
-#       retries: 5
-#       start_period: 10s
-
-# volumes:
-#   postgres_data:
-
-# networks:
-#   proxy:
-#     external: true
-
-
-
-
-
-
-
-
-
-
-# services:
-#   traefik:
-#     image: traefik:2.8
-#     container_name: traefik
-#     restart: unless-stopped
-#     networks:
-#       - proxy
-#     ports:
-#       - '80:80'
-#       - '443:443'
-#     volumes:
-#       - '/var/run/docker.sock:/var/run/docker.sock:ro'
-#       - './traefik.yml:/traefik.yml:ro'
-#       - './acme.json:/acme.json'
-#     labels:
-#       - 'traefik.enable=true'
-#       - 'traefik.port=80'
-#       - 'traefik.docker.network=proxy'
-#       - 'traefik.http.routers.traefik.service=traefik'
-#       - 'traefik.http.routers.traefik.service=api@internal'
-
-#   database:
-#     image: postgres:15-alpine
-#     container_name: database
-#     restart: unless-stopped
-#     networks:
-#       - proxy
-#     environment:
-#       - POSTGRES_USER=postgres
-#       - POSTGRES_PASSWORD=postgres
-#       - POSTGRES_DB=famasi_db
-#     ports:
-#       - '3306:3306'
-#     volumes:
-#       - ./database:/var/lib/postgresql/data
-
-#   famasi:
-#     build:
-#       context: .
-#       dockerfile: Dockerfile
-#     container_name: famasi
-#     restart: unless-stopped
-#     environment:
-#       - DATABASE_URL=postgresql://postgres:postgres@db:5432/famasi_db
-#       - NODE_ENV=development
-#     ports:
-#       - 3334:3334
-#     depends_on:
-#       - database
-#     networks:#       - 'traefik.enable=true'
-#       - 'traefik.docker.network=proxy'
-#       - 'traefik.port=3000'
-#       - 'traefik.http.routers.famasi.tls=true'
-#       - 'traefik.http.routers.famasi-http.rule=Host(`famasi.tradesync.software`)'
-#       - 'traefik.http.routers.famasi-http.entrypoints=web'
-#       - 'traefik.http.routers.famasi.tls.certresolver=letsencrypt'
-#       - 'traefik.http.routers.famasi.rule=Host(`famasi.tradesync.software`)'
-#       - 'traefik.http.routers.famasi.entrypoints=websecure'
-#       - 'traefik.http.services.famasi.loadbalancer.server.port=3000'
-#       - 'traefik.http.services.famasi-http.loadbalancer.server.port=3000'
-#       - proxy
-#     labels:
-#       - 'traefik.enable=true'
-#       - 'traefik.docker.network=proxy'
-#       - 'traefik.port=80'
-#       - 'traefik.http.routers.famasi.tls=true'
-#       - 'traefik.http.routers.famasi.rule=Host(`famasi.tradesync.software`)'
-#       - 'traefik.http.routers.famasi.entrypoints=websecure'
-#       - 'traefik.http.routers.famasi.tls.certresolver=letsencrypt'
-#       - 'traefik.http.routers.famasi.service=famasi'
-#       - 'traefik.http.services.famasi.loadbalancer.server.port=3334'
-
-# networks:
-#   proxy:
-#     external: true
-
-# volumes:
-#   famasiservicepg:
-
-  
-# services:
-
-#   traefik:
-#     image: traefik:2.8
-#     container_name: traefik
-#     restart: unless-stopped
-#     networks:
-#       - proxy
-#     ports:
-#       - '80:80'
-#       - '443:443'
-#     volumes:
-#       - '/var/run/docker.sock:/var/run/docker.sock:ro'
-#       - './traefik.yml:/traefik.yml:ro'
-#       - './acme.json:/acme.json'
-#     labels:
-#       - 'traefik.enable=true'
-#       - 'traefik.port=80'
-#       - 'traefik.docker.network=proxy'
-#       - 'traefik.http.routers.traefik.service=traefik'
-#       - 'traefik.http.routers.traefik.service=api@internal'
-#       - 'traefik.http.routers.traefik.rule=Host(`traefik.tradesync.software`)'
-#       - 'traefik.http.routers.traefik.entrypoints=websecure'
-#       - 'traefik.http.routers.traefik.tls.certresolver=letsencrypt'
-#       - 'traefik.http.routers.traefik.tls=true'
-
-#   famasi:
-#     image: nonafamasi
-#     build: .
-#     container_name: famasi-container
-#     restart: always
-#     volumes:
-#       - .:/usr/src/app
-#       - /usr/src/app/node_modules
-#     networks:
-#       - proxy  # Modify if needed to use default network
-#     ports:
-#       - "3000:3000"
-#     environment:
-#       - DATABASE_URL=postgresql://postgres:postgres@db:5432/famasi_db  # Change if using RDS
-#       - NODE_ENV=development
-#     depends_on:
-#       - db
-#     labels:
-#       - 'traefik.enable=true'
-#       - 'traefik.docker.network=proxy'
-#       - 'traefik.port=3000'
-#       - 'traefik.http.routers.famasi.tls=true'
-#       - 'traefik.http.routers.famasi-http.rule=Host(`famasi.tradesync.software`)'
-#       - 'traefik.http.routers.famasi-http.entrypoints=web'
-#       - 'traefik.http.routers.famasi.tls.certresolver=letsencrypt'
-#       - 'traefik.http.routers.famasi.rule=Host(`famasi.tradesync.software`)'
-#       - 'traefik.http.routers.famasi.entrypoints=websecure'
-#       - 'traefik.http.services.famasi.loadbalancer.server.port=3000'
-#       - 'traefik.http.services.famasi-http.loadbalancer.server.port=3000'  # Added load balancer for famasi-http
-
-      
-#   db:
-#     image: postgres:15-alpine
-#     container_name: famasi-db
-#     restart: unless-stopped
-#     networks:
-#       - proxy
-#     ports:
-#       - "5433:5432"
-#     environment:
-#       - POSTGRES_USER=postgres
-#       - POSTGRES_PASSWORD=postgres
-#       - POSTGRES_DB=famasi_db
-#     volumes:
-#       - postgres_data:/var/lib/postgresql/data  # Consider switching to RDS or EFS for production
-#     healthcheck:
-#       test: ["CMD-SHELL", "pg_isready -U postgres"]
-#       interval: 30s
-#       timeout: 10s
-#       retries: 5
-#       start_period: 10s
-
-# volumes:
-#   postgres_data:
-
-# networks:
-#   proxy:
-#     external: true  # Modify if external network is not required or create one on AWS
-
+volumes:
+  postgres_data:
 
 
 

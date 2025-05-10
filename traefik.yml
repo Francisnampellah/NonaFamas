@@ -1,5 +1,6 @@
 api:
   dashboard: true
+  insecure: false
 
 entryPoints:
   web:
@@ -16,6 +17,7 @@ providers:
   docker:
     exposedByDefault: false
     network: proxy
+    watch: true
 
 certificatesResolvers:
   letsencrypt:
@@ -24,3 +26,8 @@ certificatesResolvers:
       storage: acme.json
       httpChallenge:
         entryPoint: web
+
+log:
+  level: INFO
+
+accessLog: {}
