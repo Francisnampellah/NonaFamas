@@ -34,7 +34,7 @@ services:
     networks:
       - proxy
     environment:
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/famasi_db
       - NODE_ENV=production
     depends_on:
       - db
