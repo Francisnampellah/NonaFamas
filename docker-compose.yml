@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-   traefik:
+  traefik:
     image: traefik:2.8
     container_name: traefik
     restart: always
@@ -23,7 +23,7 @@ services:
       - "traefik.http.routers.traefik.rule=Host(`traefik.nonas.bluetech.software`)"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "traefik.http.routers.dashboard.tls=true"
- # Replace with your hashed password
+    # Replace with your hashed password
 
   famasi:
     build:
@@ -75,8 +75,3 @@ networks:
 
 volumes:
   postgres_data:
-
-
-
-
-
