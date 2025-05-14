@@ -22,6 +22,11 @@ sudo chmod +x /usr/local/bin/docker-compose
 sudo systemctl enable docker
 sudo systemctl start docker
 
+# Add current user to docker group
+sudo usermod -aG docker $USER
+# Apply the new group membership
+newgrp docker
+
 # Verify Docker and Docker Compose installation
 docker --version
 docker-compose --version
@@ -32,7 +37,7 @@ touch acme.json && chmod 600 acme.json
 
 # Run Docker Compose if docker-compose.yml exists
 if [ -f "docker-compose.yml" ]; then
-  sudo docker-compose up -d
+  docker-compose up -d
 else
   echo "docker-compose.yml not found. Please ensure it exists in the current directory."
 fi
