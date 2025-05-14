@@ -1,33 +1,29 @@
 version: '3.8'
 
 services:
-  traefik:
-    image: traefik:v2.10
+   traefik:
+    image: traefik:2.8
     container_name: traefik
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
+    restart: always
     networks:
       - proxy
     ports:
-      - '80:80'
-      - '443:443'
+      - "80:80"
+      - "443:443"
     volumes:
-      - '/var/run/docker.sock:/var/run/docker.sock:ro'
-      - './traefik.yml:/etc/traefik/traefik.yml:ro'
-      - './acme.json:/acme.json'
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./traefik.yml:/traefik.yml:ro"
+      - "./acme.json:/acme.json"
     labels:
-      - 'traefik.enable=true'
-      - 'traefik.docker.network=proxy'
-      # Dashboard configuration
-      - 'traefik.http.routers.traefik.rule=Host(`traefik.bluetech.software`)'
-      - 'traefik.http.routers.traefik.service=api@internal'
-      - 'traefik.http.routers.traefik.entrypoints=websecure'
-      - 'traefik.http.routers.traefik.tls=true'
-      - 'traefik.http.routers.traefik.tls.certresolver=letsencrypt'
-      - 'traefik.http.routers.traefik.middlewares=auth'
-      # Basic auth middleware
-      - 'traefik.http.middlewares.auth.basicauth.users=admin:$$apr1$$xyz123' # Replace with your hashed password
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.port=80"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.nonas.bluetech.software`)"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.dashboard.tls=true"
+ # Replace with your hashed password
 
   famasi:
     build:
@@ -42,14 +38,16 @@ services:
       - NODE_ENV=production
     depends_on:
       - db
-    labels:
-      - 'traefik.enable=true'
-      - 'traefik.docker.network=proxy'
-      - 'traefik.http.routers.famasi.rule=Host(`nonas.bluetech.software`)'
-      - 'traefik.http.routers.famasi.entrypoints=websecure'
-      - 'traefik.http.routers.famasi.tls=true'
-      - 'traefik.http.routers.famasi.tls.certresolver=letsencrypt'
-      - 'traefik.http.services.famasi.loadbalancer.server.port=3000'
+   labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.famasi-http.rule=Host(`nonas.bluetech.software`)"
+      - "traefik.http.routers.famasi-http.entrypoints=web"
+      - "traefik.http.routers.famasi.rule=Host(`nonas.bluetech.software`)"
+      - "traefik.http.routers.famasi.entrypoints=websecure"
+      - "traefik.http.routers.famasi.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.famasi.tls=true"
+      - "traefik.http.services.famasi.loadbalancer.server.port=3000"
 
   db:
     image: postgres:15-alpine
@@ -72,6 +70,7 @@ services:
 
 networks:
   proxy:
+    name: proxy
     external: true
 
 volumes:
