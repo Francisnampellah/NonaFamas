@@ -30,16 +30,17 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: famasi
-    restart: unless-stopped
+    restart: always
     ports:
-      - "3000:3000"
+      - 3000:3000
     networks:
       - proxy
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/famasi_db
-      - NODE_ENV=production
+      - NODE_ENV=development
     depends_on:
-      - db
+      - db:
+          condition: service_healthy
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
@@ -53,8 +54,10 @@ services:
 
   db:
     image: postgres:15-alpine
+    ports:
+      - 5432:5432
     container_name: famasi-db
-    restart: unless-stopped
+    restart: always
     networks:
       - proxy
     environment:
@@ -76,4 +79,4 @@ networks:
     external: true
 
 volumes:
-  postgres_data:
+  postgres_data: null
