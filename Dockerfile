@@ -37,7 +37,7 @@ EXPOSE 3000
 # Start application and run migrations
 CMD ["sh", "-c", "./start.sh"]
 # Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD curl -f http://0.0.0.0:3000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD curl -f http://0.0.0.0:3000 || exit 1
 
 
 # FROM node:lts AS build
