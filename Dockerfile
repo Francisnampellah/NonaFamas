@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
 # Install curl
-RUN apt-get update && apt-get install -y curl
+RUN apk add --no-cache curl
 
 WORKDIR /usr/src/app
 
