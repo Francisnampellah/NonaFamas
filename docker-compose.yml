@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   traefik:
-    image: traefik:2.8
+    image: traefik:2.10
     container_name: traefik
     restart: always
     networks:
@@ -17,13 +17,11 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
-      - "traefik.port=80"
-      - "traefik.http.routers.traefik.service=api@internal"
-      - "traefik.http.routers.traefik.entrypoints=websecure"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.nonas.bluetech.software`)"
-      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.dashboard.tls=true"
-    # Replace with your hashed password
+      # Dashboard
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.nonas.bluetech.software`)"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
 
   famasi:
     build:
@@ -31,30 +29,28 @@ services:
       dockerfile: Dockerfile
     container_name: famasi
     restart: always
-    ports:
-      - 3000:3000
     networks:
       - proxy
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/famasi_db
-      - NODE_ENV=development
-    depends_on:
-      - db
+      - NODE_ENV=production
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
-      - "traefik.http.routers.famasi-http.rule=Host(`nonas.bluetech.software`)"
+      # HTTP redirect to HTTPS
       - "traefik.http.routers.famasi-http.entrypoints=web"
+      - "traefik.http.routers.famasi-http.rule=Host(`nonas.bluetech.software`)"
+      - "traefik.http.routers.famasi-http.middlewares=redirect-to-https@docker"
+      # HTTPS router
       - "traefik.http.routers.famasi.rule=Host(`nonas.bluetech.software`)"
       - "traefik.http.routers.famasi.entrypoints=websecure"
       - "traefik.http.routers.famasi.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.famasi.tls=true"
       - "traefik.http.services.famasi.loadbalancer.server.port=3000"
+    depends_on:
+      - db
 
   db:
     image: postgres:15-alpine
-    ports:
-      - 5432:5432
     container_name: famasi-db
     restart: always
     networks:
@@ -74,8 +70,17 @@ services:
 
 networks:
   proxy:
-    name: proxy
     external: true
 
 volumes:
-  postgres_data: null
+  postgres_data: {}
+
+# Redirect middleware definition
+# This can be placed in a separate dynamic configuration file or using labels on a dedicated service
+# Example dynamic config (file: redirect.yml):
+# http:
+#   middlewares:
+#     redirect-to-https:
+#       redirectScheme:
+#         scheme: https
+#         permanent: true
