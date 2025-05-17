@@ -29,6 +29,8 @@ services:
       dockerfile: Dockerfile
     container_name: famasi
     restart: always
+    ports:
+      - "3000:3000"
     networks:
       - proxy
     environment:
