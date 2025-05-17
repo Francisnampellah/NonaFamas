@@ -17,11 +17,13 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
+      - "traefik.port=80"
       # Dashboard
-      - "traefik.http.routers.dashboard.rule=Host(`traefik.nonas.bluetech.software`)"
-      - "traefik.http.routers.dashboard.entrypoints=websecure"
-      - "traefik.http.routers.dashboard.service=api@internal"
-      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.nonas.bluetech.software`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.tls=true"
 
   famasi:
     build:
@@ -40,9 +42,8 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
       # HTTP redirect to HTTPS
-      - "traefik.http.routers.famasi-http.entrypoints=web"
       - "traefik.http.routers.famasi-http.rule=Host(`nonas.bluetech.software`)"
-      - "traefik.http.routers.famasi-http.middlewares=redirect-to-https@docker"
+      - "traefik.http.routers.famasi-http.entrypoints=web"
       # HTTPS router
       - "traefik.http.routers.famasi.rule=Host(`nonas.bluetech.software`)"
       - "traefik.http.routers.famasi.entrypoints=websecure"
