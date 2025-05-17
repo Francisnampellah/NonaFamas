@@ -23,7 +23,7 @@ dotenv.config();
 
 const app = express();
 const prisma = new PrismaClient();
-const port = process.env.PORT || 3000;
+const port = 3000;
 
 app.use(express.json());
 
@@ -47,7 +47,7 @@ app.use("/api/users",userRoutes)
 app.use("/api/transactions",transactionRoute)
 
 // Basic health check route
-app.get('/health', (req:any, res:any) => {
+app.get('/', (req:any, res:any) => {
   res.json({ status: 'ok' });
 });
 
