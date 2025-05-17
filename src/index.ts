@@ -55,12 +55,13 @@ app.get('/health', (req:any, res:any) => {
 setInterval(cleanupExpiredTokens, 24 * 60 * 60 * 1000);
 
 app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
 
   // Ensure start.sh is executable
   try {
     execSync('chmod +x ./start.sh');
     console.log('start.sh is now executable');
+    console.log(`Server is running on port ${port}`);
+
   } catch (error) {
     console.error(`Error setting permissions for start.sh: ${error}`);
   }
