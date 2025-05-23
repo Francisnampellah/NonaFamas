@@ -2,6 +2,9 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import authRoutes from './routes/authRoute.js';
 import medicineRoutes from './routes/medicineRoute.js';
 import categoryRoutes from './routes/categoryRoute.js';
@@ -19,7 +22,11 @@ import transactionRoute from "./routes/transaction.routes.js"
 import { cleanupExpiredTokens } from './utils/tokenCleanup.js';
 import { exec, execSync } from 'child_process';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load environment variables
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const prisma = new PrismaClient();

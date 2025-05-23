@@ -6,7 +6,6 @@ const prisma = new PrismaClient();
 
 interface TokenPayload {
   id: string;
-  email: string;
   role: string;
 }
 
@@ -35,10 +34,18 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
       return res.status(401).json({ message: 'Token has been invalidated' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
+    // if (!process.env.JWT_SECRET) {
+    //   console.error('JWT_SECRET is not defined in environment variables');
+    //   return res.status(500).json({ message: 'Server configuration error' });
+    // }
+
+    console.log('JWT_SECRET value:', process.env.JWT_SECRET || 'secret');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as TokenPayload;
+    console.log('Decoded token:', decoded);
     req.user = decoded;
     next();
   } catch (error) {
-    return res.status(401).json({ message: 'Not authorized, token failed' });
+    console.error('Token verification error:', error);
+    return res.status(401).json({ message: 'Not authorized, token failed', error: error });
   }
 };
