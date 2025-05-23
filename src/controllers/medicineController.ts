@@ -22,7 +22,7 @@ interface MulterRequest extends Request {
 const prisma = new PrismaClient();
 
 export const createMedicine = async (req: Request, res: Response) => {
-  const { name, manufacturer, unit, category, sellPrice, quantity, dosage } = req.body;
+  const { name, manufacturer, unit, category, sellPrice, dosage } = req.body;
 
   try {
     // Handle manufacturer (create if not exists)
@@ -111,39 +111,17 @@ export const createMedicine = async (req: Request, res: Response) => {
       },
     });
 
-    // Create stock entry for the medicine
-    const stock = await prisma.stock.create({
-      data: {
-        medicineId: medicine.id,
-        quantity: +quantity || 0
-      }
-    });
-
-    // Fetch the complete medicine with stock
-    const medicineWithStock = await prisma.medicine.findUnique({
-      where: { id: medicine.id },
-      include: {
-        manufacturer: true,
-        unit: true,
-        category: true,
-        stock: true,
-      },
-    });
-
-    res.status(201).json({ message: 'Medicine created successfully', medicine: medicineWithStock });
+    res.status(201).json({ message: 'Medicine created successfully', medicine });
   } catch (error) {
     console.log("Error creating medicine", error)
     res.status(500).json({ error: 'Error creating medicine', details: error });
   }
 };
 
-
-
 export const getMedicineTemplate = async (req: Request, res: Response) => {
   console.log("Fetching template")  
   try {
     // Fetch existing values
-
     const [manufacturers, categories, units] = await Promise.all([
       prisma.manufacturer.findMany(),
       prisma.category.findMany(),
@@ -154,7 +132,7 @@ export const getMedicineTemplate = async (req: Request, res: Response) => {
     const sheet = workbook.addWorksheet('Medicines');
 
     // Add headers
-    sheet.addRow(['Name', 'Manufacturer (ID or Name)', 'Category (ID or Name)', 'Unit (ID or Name)', 'Sell Price', 'Quantity', 'Dosage']);
+    sheet.addRow(['Name', 'Manufacturer (ID or Name)', 'Category (ID or Name)', 'Unit (ID or Name)', 'Sell Price', 'Dosage']);
     
     // Set column definitions
     sheet.columns = [
@@ -163,7 +141,6 @@ export const getMedicineTemplate = async (req: Request, res: Response) => {
       { key: 'category', width: 30 },
       { key: 'unit', width: 20 },
       { key: 'sellPrice', width: 15 },
-      { key: 'quantity', width: 15 },
       { key: 'dosage', width: 20 },
     ];
 
@@ -208,7 +185,6 @@ export const getMedicineTemplate = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to generate Excel template' });
   }
 };
-
 
 export const getMedicines = async (req: Request, res: Response) => {
   try {
@@ -323,8 +299,7 @@ export const bulkUploadMedicines = async (req: MulterRequest, res: Response) => 
       const category = String(values[3] ?? '').trim();
       const unit = String(values[4] ?? '').trim();
       const sellPrice = String(values[5] ?? '').trim();
-      const quantity = String(values[6] ?? '').trim();
-      const dosage = String(values[7] ?? '').trim();
+      const dosage = String(values[6] ?? '').trim();
 
       try {
         // Helper function to extract ID from "ID - Name" format
@@ -422,14 +397,6 @@ export const bulkUploadMedicines = async (req: MulterRequest, res: Response) => 
             manufacturer: true,
             unit: true,
             category: true,
-          },
-        });
-
-        // Create stock entry
-        await prisma.stock.create({
-          data: {
-            medicineId: medicine.id,
-            quantity: parseInt(quantity) || 0,
           },
         });
 
